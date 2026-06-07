@@ -17,6 +17,12 @@ data/raw/*.pgn
 
 data/processed/*.json
 
+data/processed/*.npz
+
+*.pt
+
+*.onnx
+
 node_modules/
 
 web-app/build/
