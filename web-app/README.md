@@ -14,6 +14,9 @@ shadows, SVG icons, WCAG-AA contrast and `prefers-reduced-motion` respected.
 - **An opponent you can actually beat** — an adaptive [Stockfish](https://stockfishchess.org)
   (compiled to WebAssembly, runs locally). Level 1 deliberately makes blunders so a
   first-timer can win; the levels climb up to genuinely tough.
+- **Graduate opponent: the Magnus bot** — once you're improving, switch opponents to a
+  neural net trained on Magnus Carlsen's own games (~27% top-1 move-match). It runs
+  entirely in your browser via onnxruntime-web and plays his openings. Loaded on demand.
 - **Gentle first-run welcome** — newcomers are greeted with a calm choice:
   "Learn the pieces" or "Play a game" (shown once, remembered per browser).
 - **"Learn the pieces" tutorial** — a gentle, interactive tour for absolute
@@ -147,4 +150,4 @@ weak engine, is what makes a beginner able to win and stay motivated.
       evaluation, and move ratings (good / inaccuracy / blunder).
 - [ ] "Learn the pieces" interactive tutorial before the first full game.
 - [ ] Promotion picker (currently auto-queens) and sound/animation polish.
-- [ ] "Graduate" mode: play the Carlsen-style imitation model (see the repo root).
+- [x] "Graduate" mode: play the Carlsen-style imitation model (the Magnus bot, live).

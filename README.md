@@ -26,8 +26,9 @@ in the browser (Chessground + chess.js + Stockfish WASM), no server required.
 cd web-app && npm install && npm run dev   # http://localhost:5173
 ```
 
-The Carlsen imitation model described below is the **aspirational "graduate" opponent**
-— something to play once you've learned the ropes — not what a beginner faces first.
+The Carlsen imitation model described below is the **"graduate" opponent** you can
+switch to once you've learned the ropes (live in the app, running in your browser via
+ONNX). It is not what a beginner faces first.
 
 ## How it works
 
@@ -150,7 +151,7 @@ strong model:
 ## Roadmap
 
 - [ ] Add a value head + light search to trade human-likeness for strength on a dial.
-- [ ] ONNX export + a browser board UI (replace the empty `web-app` submodule).
+- [x] ONNX export + a browser board UI (the `web-app/`, with the model as the Magnus bot).
 - [ ] Per-era models (early vs. World-Champion Carlsen) and per-opponent conditioning.
 - [ ] Blend with an engine to cap blunders while keeping the style.
 
