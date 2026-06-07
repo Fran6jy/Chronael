@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chronael — Learn Chess, Calmly</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <!-- First-run welcome (shown once, for newcomers) -->
+      <div id="welcome" class="welcome-overlay" hidden>
+        <div class="welcome-card" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+          <svg class="welcome-mark" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 4a3 3 0 1 1 4.5 2.6c1.2.7 2 1.9 2.2 3.4H6.3c.2-1.5 1-2.7 2.2-3.4A3 3 0 0 1 9 4Z" />
+            <path d="M7 11h10l-1.2 5H8.2L7 11Z" />
+            <path d="M6 17h12v3H6z" />
+          </svg>
+          <h2 id="welcome-title" class="welcome-title">Welcome to Chronael</h2>
+          <p class="welcome-sub">A calm place to learn chess, one move at a time. Where would you like to begin?</p>
+          <div class="welcome-choices">
+            <button id="welcome-learn" type="button" class="welcome-choice">
+              <svg class="wc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m22 10-10-5L2 10l10 5 10-5Z"/><path d="M6 12v5c0 1 2.7 2 6 2s6-1 6-2v-5"/></svg>
+              <span class="wc-title">Learn the pieces</span>
+              <span class="wc-sub">Never played before? Start here — we’ll show you how each piece moves.</span>
+            </button>
+            <button id="welcome-play" type="button" class="welcome-choice">
+              <svg class="wc-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+              <span class="wc-title">Play a game</span>
+              <span class="wc-sub">Jump in against a gentle opponent you can actually beat.</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <header class="topbar">
+        <button id="mute" type="button" class="mute-btn" aria-pressed="false" aria-label="Mute sounds" title="Sound on/off">
+          <svg class="mute-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+          <svg class="mute-off" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>
+        </button>
+        <h1 class="brand">
+          <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 4a3 3 0 1 1 4.5 2.6c1.2.7 2 1.9 2.2 3.4H6.3c.2-1.5 1-2.7 2.2-3.4A3 3 0 0 1 9 4Z" />
+            <path d="M7 11h10l-1.2 5H8.2L7 11Z" />
+            <path d="M6 17h12v3H6z" />
+          </svg>
+          Chronael
+        </h1>
+        <p class="tagline">Learn chess gently. Click a piece to see where it can go.</p>
+      </header>
+
+      <main class="layout">
+        <div class="board-wrap">
+          <div id="board" class="cg-wrap"></div>
+
+          <!-- Promotion picker (hidden until a pawn reaches the last rank) -->
+          <div id="promotion" class="promotion-overlay" hidden>
+            <div class="promotion-card" role="dialog" aria-modal="true" aria-label="Choose a piece to promote to">
+              <p class="promotion-title">Promote your pawn to…</p>
+              <div id="promotion-choices" class="promotion-choices"></div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="panel">
+          <!-- PLAY MODE -->
+          <section id="play-panel">
+            <div id="status" class="status" aria-live="polite">Your move — you are White.</div>
+
+            <div class="evalrow">
+              <div class="evalbar" title="Who is ahead">
+                <div id="eval-fill" class="eval-fill"></div>
+              </div>
+              <div id="rating" class="rating"></div>
+            </div>
+
+            <div id="captured" class="captured">
+              <div class="cap-row"><span class="cap-side">You’ve won</span><span id="cap-yours" class="cap-glyphs"></span></div>
+              <div class="cap-row"><span class="cap-side">Opponent won</span><span id="cap-theirs" class="cap-glyphs"></span></div>
+              <div id="cap-summary" class="cap-summary">Even material</div>
+            </div>
+
+            <div id="coach" class="coach" aria-live="polite">Tip: pieces light up the squares they can move to.</div>
+            <button id="coach-more" type="button" class="coach-more" hidden>Tell me more →</button>
+
+            <div class="controls">
+              <label class="control">
+                Difficulty
+                <select id="level">
+                  <option value="0">1 · Gentle start (makes mistakes)</option>
+                  <option value="1">2 · Very easy</option>
+                  <option value="2" selected>3 · Easy</option>
+                  <option value="3">4 · Casual</option>
+                  <option value="4">5 · Improving</option>
+                  <option value="5">6 · Club</option>
+                  <option value="6">7 · Strong</option>
+                  <option value="7">8 · Toughest</option>
+                </select>
+              </label>
+
+              <label class="control">
+                You play
+                <select id="side">
+                  <option value="white" selected>White (move first)</option>
+                  <option value="black">Black</option>
+                </select>
+              </label>
+
+              <label class="control control-check">
+                <input type="checkbox" id="coords" />
+                Show square labels (a–h, 1–8)
+              </label>
+
+              <div class="buttons">
+                <button id="undo" type="button" class="btn">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+                  Take back
+                </button>
+                <button id="hint" type="button" class="btn">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.1 14c.4-1 .9-1.6 1.7-2.4A6 6 0 1 0 6 8c0 1.6.8 2.8 1.2 3.6.6.9 1.1 1.4 1.5 2.4"/></svg>
+                  Hint
+                </button>
+              </div>
+              <div class="buttons">
+                <button id="learn" type="button" class="btn btn-soft">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m22 10-10-5L2 10l10 5 10-5Z"/><path d="M6 12v5c0 1 2.7 2 6 2s6-1 6-2v-5"/></svg>
+                  Learn the pieces
+                </button>
+                <button id="newgame" type="button" class="btn btn-primary">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+                  New game
+                </button>
+              </div>
+            </div>
+
+            <div class="moves-wrap">
+              <h2>Moves</h2>
+              <ol id="moves" class="moves"></ol>
+            </div>
+          </section>
+
+          <!-- TUTORIAL MODE -->
+          <section id="tutorial-panel" hidden>
+            <div class="tut-progress" id="tut-progress">Piece 1 of 6</div>
+            <h2 class="tut-title" id="tut-title">The Pawn</h2>
+            <p class="tut-text" id="tut-text"></p>
+            <p class="tut-hint" id="tut-hint">Try moving the highlighted piece.</p>
+            <div class="buttons">
+              <button id="tut-prev" type="button" class="btn">Back</button>
+              <button id="tut-next" type="button" class="btn btn-primary">Next piece</button>
+            </div>
+            <button id="tut-exit" type="button" class="btn btn-ghost tut-exit">Exit to a game</button>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
