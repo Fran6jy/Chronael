@@ -1,383 +1,167 @@
-# 🎮 Chess AI Training Pipeline - Enhanced Edition
+# ♟️ Chronael — play chess against an imitation of Magnus Carlsen
 
-An advanced machine learning pipeline for training chess-playing AI models by fine-tuning small language models on grandmaster games. This is an enhanced version with multi-player support, better data processing, and modern deployment options.
+Chronael trains a neural network to **play like a specific human** by imitation:
+it learns to predict the move that player actually chose in each position. Train it
+on Magnus Carlsen's games and it plays Carlsen-flavoured chess; point it at another
+player's PGN and it imitates them instead.
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+Human-likeness is measured the way the [Maia Chess](https://maiachess.com) papers
+measure it — **move-match accuracy**: how often the model reproduces the player's
+real move on held-out games.
 
-## 🌟 Key Features
+> **Why not a chess-playing LLM?** The first version of this project fine-tuned a
+> 350M language model on `FEN -> UCI` text. It played weakly and produced *illegal*
+> moves often enough to need a random fallback, and nothing actually conditioned it
+> on Carlsen at play time. That approach is archived in [`legacy/`](legacy/). The
+> current design never plays an illegal move and has a real, reportable metric.
 
-### Improvements Over Original
-- ✅ **Multi-Player Training**: Learn from multiple grandmaster styles (Carlsen, Kasparov, Fischer, Tal, Petrosian)
-- ✅ **Data Augmentation**: Horizontal mirroring doubles training data
-- ✅ **Enhanced Evaluation**: Comprehensive metrics and game playing capability
-- ✅ **Serverless Training**: Modal integration for easy GPU access
-- ✅ **Web Deployment**: ONNX export for browser-based inference
-- ✅ **Better Organization**: Modular code structure and comprehensive documentation
+## 🎓 Play now: the beginner learning app
 
-### Training Pipeline
-1. **Data Collection**: Download PGN files from top players
-2. **Data Processing**: Extract positions, moves, and game states
-3. **Augmentation**: Mirror positions to increase diversity
-4. **Fine-tuning**: LoRA-based efficient training
-5. **Evaluation**: Multi-metric testing and game playing
-6. **Deployment**: Export to ONNX or mobile bundles
-
-## 📊 Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                   Chess AI Pipeline                      │
-├─────────────────────────────────────────────────────────┤
-│                                                           │
-│  📥 Data Collection                                       │
-│  │   ├── Download PGN files (Magnus, Kasparov, etc.)    │
-│  │   └── Filter by ELO rating (2700+)                   │
-│  │                                                        │
-│  ⚙️  Data Processing                                      │
-│  │   ├── Extract game states (FEN notation)             │
-│  │   ├── Generate move sequences                        │
-│  │   ├── Create valid move lists                        │
-│  │   └── Mirror positions (augmentation)                │
-│  │                                                        │
-│  📝 Instruction Dataset                                   │
-│  │   ├── Format prompts with game context               │
-│  │   ├── Add player style descriptions                  │
-│  │   └── Create training/validation split               │
-│  │                                                        │
-│  🎯 Model Training                                        │
-│  │   ├── Load LFM2-350M base model                      │
-│  │   ├── Apply LoRA (Low-Rank Adaptation)               │
-│  │   ├── Fine-tune on chess positions                   │
-│  │   └── Evaluate performance                           │
-│  │                                                        │
-│  🚀 Deployment                                            │
-│      ├── ONNX export (web deployment)                    │
-│      ├── Mobile bundle (iOS/Android)                     │
-│      └── API server (FastAPI)                            │
-│                                                           │
-└─────────────────────────────────────────────────────────┘
-```
-
-## 🚀 Quick Start
-
-### 1. Installation
+The primary, beginner-facing experience lives in [`web-app/`](web-app/) — a
+browser app that teaches chess to someone who has **never played before**: legal-move
+dots, take-backs, hints, and an adaptive opponent gentle enough to beat. It runs fully
+in the browser (Chessground + chess.js + Stockfish WASM), no server required.
 
 ```bash
-# Clone repository
-git clone https://github.com/yourusername/chess-ai-training
-cd chess-ai-training
-
-# Setup environment
-make setup
-
-# Activate virtual environment
-source venv/bin/activate
+cd web-app && npm install && npm run dev   # http://localhost:5173
 ```
 
-### 2. Download Data
+The Carlsen imitation model described below is the **aspirational "graduate" opponent**
+— something to play once you've learned the ropes — not what a beginner faces first.
 
-Download PGN files from [PGN Mentor](https://www.pgnmentor.com/files.html#players):
+## How it works
+
+```
+PGN games ──► keep only positions where the TARGET PLAYER moved
+          ──► encode board to 17×8×8 planes (oriented to side-to-move)
+          ──► ResNet policy net predicts a distribution over moves
+          ──► train to match the player's actual move (cross-entropy)
+          ──► PLAY: softmax over LEGAL moves only ⇒ always legal, human-like
+```
+
+Key design choices:
+
+- **Side-to-move orientation** — the board is always shown from the mover's view, so
+  the net learns "my pieces vs. theirs" instead of white-vs-black.
+- **Legal-move masking** — at inference we score only the position's legal moves, so
+  the engine *cannot* output an illegal move.
+- **Game-level train/val split** — positions from one game never leak across the
+  split, so the move-match number is honest.
+- **Tiny & portable** — a small residual CNN that trains on CPU for experiments and
+  exports to ONNX for in-browser play.
+
+## Quick start
 
 ```bash
-# Create data directory
-mkdir -p data/raw
+make setup                 # install dependencies
 
-# Download recommended players
-# - Carlsen.pgn (positional, strategic)
-# - Kasparov.pgn (aggressive, tactical)
-# - Fischer.pgn (precise, calculating)
-# - Tal.pgn (creative, sacrificial)
-# - Petrosian.pgn (defensive, prophylactic)
-
-# Place files in data/raw/
+make download              # fetch Carlsen's ~4,300 games (PGN)
+make data                  # build the move-prediction dataset (.npz)
+make train EPOCHS=30 CHANNELS=128 NUM_BLOCKS=10   # train the policy net
+make eval                  # report move-match accuracy on held-out games
+make play                  # play a game in the terminal
 ```
 
-### 3. Process Data
+Everything is also runnable directly:
 
 ```bash
-# Process all PGN files into training format
-make process-data
-
-# This creates: data/processed/combined_instructions.json
+python scripts/download_data.py --player Carlsen
+python scripts/build_dataset.py --pgn data/raw/Carlsen.pgn --out data/processed/carlsen.npz \
+    --min-year 2013          # optionally focus on his World-Champion era
+python scripts/train.py --data data/processed/carlsen.npz --out models/chronael.pt \
+    --channels 128 --num-blocks 10 --epochs 30
+python scripts/play.py --model models/chronael.pt --color white --show-thinking
 ```
 
-### 4. Train Model
-
-**Option A: Local Training (requires GPU)**
+### Imitate a different player
 
 ```bash
-make train
+make download PLAYER=Kasparov
+make data     PLAYER=Kasparov
+make train    DATA=data/processed/kasparov.npz MODEL=models/kasparov.pt
 ```
 
-**Option B: Serverless Training with Modal (recommended)**
+## Playing
+
+```text
+$ python scripts/play.py --show-thinking
+Your move (White): e4
+  Chronael considers: e5 41%, c5 27%, e6 12%, c6 9%, Nf6 6%
+Chronael plays: c5
+```
+
+- `--temperature 0` → the single most Carlsen-likely move (strongest, most
+  predictable). Higher temperatures add human-like variety; `--top-k` caps the pool.
+
+## Serving over HTTP
 
 ```bash
-# Install Modal
-pip install modal
+make api      # uvicorn on :8000, loads models/chronael.pt
 
-# Setup Modal account
-modal setup
-
-# Train on Modal's GPUs
-make train-modal
-```
-
-### 5. Evaluate Model
-
-```bash
-# Run evaluation on test set
-python evaluate.py --model-path models/chess-ai --dataset-path data/processed/combined_instructions.json
-
-# Play test games
-python evaluate.py --model-path models/chess-ai --play-game --num-games 20
-```
-
-## 📁 Project Structure
-
-```
-chess-ai-training/
-├── train.py                 # Main training pipeline
-├── train_modal.py          # Modal serverless training
-├── evaluate.py             # Evaluation and testing
-├── export_onnx.py          # ONNX export for web
-├── Makefile                # Automation commands
-├── requirements.txt        # Python dependencies
-├── README.md              # This file
-│
-├── data/
-│   ├── raw/               # PGN files (download manually)
-│   │   ├── Carlsen.pgn
-│   │   ├── Kasparov.pgn
-│   │   └── ...
-│   └── processed/         # Processed training data
-│       └── combined_instructions.json
-│
-├── models/                # Trained models
-│   └── chess-ai/
-│       ├── pytorch_model.bin
-│       ├── config.json
-│       └── tokenizer/
-│
-├── logs/                  # Training logs
-└── notebooks/             # Jupyter notebooks for analysis
-```
-
-## ⚙️ Configuration
-
-### Data Configuration
-
-```python
-from train import DataConfig
-
-config = DataConfig(
-    players=["Carlsen", "Kasparov", "Fischer", "Tal", "Petrosian"],
-    min_elo=2700,
-    max_games_per_player=5000,
-    move_history_length=5
-)
-```
-
-### Training Configuration
-
-```python
-from train import TrainingConfig
-
-config = TrainingConfig(
-    model_name="LiquidAI/LFM2-350M",
-    learning_rate=2e-5,
-    num_train_epochs=3,
-    per_device_train_batch_size=4,
-    lora_r=16,
-    lora_alpha=32,
-    max_steps=10000
-)
-```
-
-## 📊 Evaluation Metrics
-
-The evaluation script provides multiple metrics:
-
-- **Exact Match Accuracy**: Percentage of positions where model predicts exact move
-- **Legal Move Rate**: Percentage of predictions that are legal moves
-- **Top-3/Top-5 Accuracy**: Percentage where correct move is in top predictions
-- **Game Win Rate**: Performance in complete games against random/engine opponents
-
-### Sample Results
-
-```
-EVALUATION RESULTS
-==================================================
-Total positions: 1000
-Exact match accuracy: 32.5%
-Legal move rate: 94.2%
-Top-3 accuracy: 48.7%
-Top-5 accuracy: 58.3%
-==================================================
-
-GAME RESULTS
-==================================================
-Total games: 20
-Wins: 14 (70.0%)
-Losses: 3 (15.0%)
-Draws: 3 (15.0%)
-==================================================
-```
-
-## 🌐 Deployment Options
-
-### 1. Web Application (ONNX)
-
-```bash
-# Export to ONNX format
-python export_onnx.py --model-path models/chess-ai --output models/chess-ai.onnx
-
-# Use in browser with ONNX Runtime Web
-# See web_app/ for React implementation
-```
-
-### 2. Mobile Application
-
-```bash
-# Bundle for iOS/Android
-make bundle-model
-
-# Creates models/chess-ai.bundle
-# Use with Leap Edge SDK
-```
-
-### 3. API Server
-
-```bash
-# Start FastAPI server
-python api_server.py --model-path models/chess-ai --port 8000
-
-# Test endpoint
 curl -X POST http://localhost:8000/predict \
   -H "Content-Type: application/json" \
-  -d '{"fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"}'
+  -d '{"fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1","temperature":0.4,"top_k":3}'
+# -> {"move":"e2e4","san":"e4","legal":true,"candidates":[...]}
 ```
 
-## 🎯 Training Tips
+## Evaluation — the number for your write-up
 
-### GPU Requirements
-- **Minimum**: 16GB VRAM (NVIDIA T4 or better)
-- **Recommended**: 40GB VRAM (A100)
-- **Alternative**: Use Modal for serverless GPU access
+`make eval` prints top-1 / top-3 / top-5 move-match on a held-out split of the
+player's games:
 
-### Training Time
-- **5k steps**: ~2 hours on A100
-- **10k steps**: ~4 hours on A100
-- **Full training**: ~8 hours on A100
-
-### Hyperparameter Tuning
-
-Key parameters to experiment with:
-
-1. **Learning Rate** (2e-5 to 5e-5)
-   - Lower = more stable, slower
-   - Higher = faster, may diverge
-
-2. **LoRA Rank** (8, 16, 32)
-   - Lower = fewer parameters, faster
-   - Higher = more capacity, better performance
-
-3. **Batch Size** (2, 4, 8)
-   - Depends on GPU memory
-   - Use gradient accumulation for larger effective batch
-
-4. **Max Steps** (5k, 10k, 20k)
-   - Monitor validation loss
-   - Use early stopping
-
-## 📈 Advanced Features
-
-### Custom Player Styles
-
-Add your own player styles:
-
-```python
-config = TrainingConfig(
-    player_styles={
-        "Carlsen": "positional and endgame specialist",
-        "Kasparov": "dynamic and aggressive",
-        "Custom": "your custom style description"
-    }
-)
+```text
+Held-out positions=... top1=...  top3=...  top5=...
 ```
 
-### Data Augmentation
+Top-1 is "how often the model reproduces the player's exact move." For reference,
+the Maia papers report ~46–52% top-1 at their best (move prediction is intentionally
+*not* the same as playing the engine-best move).
 
-Beyond mirroring, implement:
-- Position rotation
-- Opening book integration
-- Endgame tablebase knowledge
+> A 6-epoch CPU smoke run on just 200 games already lifts val top-1 from 2.7%
+> (≈ random) to ~14.5%; the full dataset with a larger net and GPU is where it
+> reaches the human-match range above.
 
-### Multi-Model Ensemble
+## Project layout
 
-Train multiple models with different styles and combine predictions:
-
-```python
-from ensemble import ChessEnsemble
-
-ensemble = ChessEnsemble([
-    "models/carlsen-style",
-    "models/kasparov-style",
-    "models/tal-style"
-])
-
-move = ensemble.predict(position, strategy="voting")
+```
+chronael/
+  encoding.py    board <-> planes, move <-> index, orientation, legal-move masking
+  data.py        PGN ─► (planes, move_index) for the target player only
+  model.py       ResNet policy network (policy head only)
+  engine.py      inference: legal-masked move selection, temperature / top-k
+  evaluate.py    move-match accuracy
+scripts/
+  download_data.py  build_dataset.py  train.py  evaluate_model.py  play.py
+api/server.py    FastAPI move server
+tests/           encoding & engine invariants (run: make test)
+legacy/          the original LLM fine-tuning approach (archived)
 ```
 
-## 🔬 Research Extensions
+## Training at scale
 
-Potential improvements:
+The policy net is small; the bottleneck is data volume, not GPU memory. To train a
+strong model:
 
-1. **Reinforcement Learning**: Self-play training
-2. **Value Network**: Add position evaluation head
-3. **MCTS Integration**: Monte Carlo Tree Search for move selection
-4. **Opening Books**: Integrate standard opening theory
-5. **Endgame Tables**: Use Syzygy tablebases
+- Use the full PGN (`make data` with no `--max-games`) — ~160k Carlsen positions.
+- Scale the net: `--channels 128 --num-blocks 10` (and more for diminishing returns).
+- Train for 30–60 epochs with the game-level split; watch val top-1, not train loss.
+- A single mid-range GPU is plenty; a CPU works for small experiments.
 
-## 🤝 Contributing
+## Roadmap
 
-Contributions welcome! Areas for improvement:
+- [ ] Add a value head + light search to trade human-likeness for strength on a dial.
+- [ ] ONNX export + a browser board UI (replace the empty `web-app` submodule).
+- [ ] Per-era models (early vs. World-Champion Carlsen) and per-opponent conditioning.
+- [ ] Blend with an engine to cap blunders while keeping the style.
 
-- [ ] Add Stockfish evaluation for training labels
-- [ ] Implement beam search for better move selection
-- [ ] Add position evaluation head to model
-- [ ] Create web-based training dashboard
-- [ ] Support more base models (Llama, Mistral)
-- [ ] Add time control support
-- [ ] Implement opening book learning
+## References
 
-## 📚 References
+- McIlroy-Young et al., *Aligning Superhuman AI with Human Behavior: Chess as a Model
+  System*, KDD 2020 (Maia).
+- McIlroy-Young et al., *Learning Models of Individual Behavior in Chess*, KDD 2022.
+- Games via the [rozim/ChessData](https://github.com/rozim/ChessData) mirror of
+  [PGN Mentor](https://www.pgnmentor.com/).
 
-- [Original Repository](https://github.com/Paulescu/chess-game)
-- [LiquidAI LFM2 Models](https://liquid.ai)
-- [Chess Programming Wiki](https://www.chessprogramming.org/)
-- [PGN Mentor Database](https://www.pgnmentor.com/)
+## License
 
-## 📝 License
-
-MIT License - See LICENSE file for details
-
-## 🙏 Acknowledgments
-
-- Pau Labarta Bajo for the original chess-game repository
-- LiquidAI for the LFM2 model family
-- Chess.com and Lichess for providing game databases
-- Modal for serverless GPU infrastructure
-
-## 📧 Contact
-
-- **GitHub**: [@yourusername](https://github.com/yourusername)
-- **Email**: your.email@example.com
-- **Portfolio**: yourportfolio.com
-
----
-
-**Built with ❤️ for the ML and Chess communities**
-
-*Star ⭐ this repo if you find it useful!*
+MIT
