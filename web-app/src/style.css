@@ -306,9 +306,18 @@ body {
   border: 1px solid var(--border);
   border-radius: 10px;
 }
-.cap-row { display: flex; align-items: center; gap: 8px; min-height: 22px; }
-.cap-side { font-size: 0.74rem; color: var(--muted); font-weight: 600; width: 92px; flex: 0 0 auto; }
-.cap-glyphs { font-size: 1.15rem; line-height: 1; color: var(--text); letter-spacing: 1px; }
+.cap-row { display: flex; align-items: flex-start; gap: 8px; min-height: 22px; }
+.cap-side { font-size: 0.74rem; color: var(--muted); font-weight: 600; width: 92px; flex: 0 0 auto; padding-top: 4px; }
+.cap-glyphs {
+  font-size: 1.05rem;
+  line-height: 1.25;
+  color: var(--text);
+  letter-spacing: 1px;
+  flex: 1 1 auto;
+  min-width: 0;          /* let the flex item shrink so wrapping can happen */
+  overflow-wrap: anywhere;
+  word-break: break-all; /* the glyph run has no spaces, so allow breaks anywhere */
+}
 .cap-summary {
   margin-top: 6px;
   padding-top: 6px;
