@@ -24,6 +24,7 @@ def main() -> int:
     parser.add_argument("--model", default="models/chronael.pt")
     parser.add_argument("--out", default="web-app/public/models/chronael.onnx")
     parser.add_argument("--opset", type=int, default=17)
+    parser.add_argument("--no-int8", action="store_true", help="Skip int8 quantisation.")
     args = parser.parse_args()
 
     model, extra = load_checkpoint(args.model, map_location="cpu")
@@ -41,6 +42,7 @@ def main() -> int:
         output_names=["logits"],
         dynamic_axes={"planes": {0: "batch"}, "logits": {0: "batch"}},
         opset_version=args.opset,
+        dynamo=False,  # legacy exporter: cleaner static graph that quantization handles
     )
 
     size_mb = out_path.stat().st_size / 1e6
@@ -49,6 +51,16 @@ def main() -> int:
     print(f"  output : logits (batch, {POLICY_SIZE})")
     if extra:
         print(f"  trained on: {extra.get('player', '?')}, val top-1 {extra.get('val_top1', '?')}")
+
+    if not args.no_int8:
+        # Dynamic int8 quantisation shrinks the model ~4x for a fast browser download.
+        from onnxruntime.quantization import quantize_dynamic, QuantType
+
+        int8_path = out_path.with_suffix(".int8.onnx")
+        quantize_dynamic(str(out_path), str(int8_path), weight_type=QuantType.QInt8)
+        int8_mb = int8_path.stat().st_size / 1e6
+        print(f"Quantised ONNX: {int8_path}  ({int8_mb:.1f} MB)  <- ship this to the browser")
+
     print("\nNext: load with onnxruntime-web in the app and gather logits over legal moves.")
     return 0
 

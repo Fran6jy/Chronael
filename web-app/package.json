@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "chess.js": "^1.4.0",
-    "chessground": "^9.2.1"
+    "chessground": "^9.2.1",
+    "onnxruntime-web": "^1.26.0"
   },
   "devDependencies": {
     "stockfish": "16.0.0",

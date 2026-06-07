@@ -17,6 +17,7 @@ import {
 import { askPromotion } from "./promotion";
 import { PieceTutorial } from "./tutorial";
 import { playMove, playCapture, isMuted, setMuted } from "./sound";
+import { CarlsenEngine } from "./carlsen";
 
 import type { Move } from "chess.js";
 
@@ -29,6 +30,10 @@ type Color = "white" | "black";
 
 const chess = new Chess();
 const engine = new ChessEngine();
+const carlsen = new CarlsenEngine();
+
+type Opponent = "stockfish" | "magnus";
+let opponent: Opponent = "stockfish";
 
 let playerColor: Color = "white";
 let levelIndex = 2;
@@ -327,22 +332,36 @@ async function engineMove(): Promise<void> {
   thinking = true;
   updateStatus(chess.isCheck());
 
-  let uci: string;
-  if (Math.random() < level.blunder) {
-    // Deliberate beginner-friendly mistake: a random legal move.
-    const moves = chess.moves({ verbose: true });
-    const pick = moves[Math.floor(Math.random() * moves.length)];
-    uci = pick.from + pick.to + (pick.promotion ?? "");
+  let move: Move | null = null;
+  if (opponent === "magnus") {
+    // The trained Carlsen net picks. A little temperature keeps games varied.
+    const mv = await carlsen.selectMove(chess, { temperature: 0.3, topK: 5 });
+    if (mv) {
+      move = chess.move({
+        from: mv.from as Square,
+        to: mv.to as Square,
+        promotion: (mv.promotion as "q" | "r" | "b" | "n") || undefined,
+      });
+      if (move) lastMove = [mv.from as Key, mv.to as Key];
+    }
   } else {
-    uci = await engine.bestMove(chess.fen(), level);
+    let uci: string;
+    if (Math.random() < level.blunder) {
+      // Deliberate beginner-friendly mistake: a random legal move.
+      const moves = chess.moves({ verbose: true });
+      const pick = moves[Math.floor(Math.random() * moves.length)];
+      uci = pick.from + pick.to + (pick.promotion ?? "");
+    } else {
+      uci = await engine.bestMove(chess.fen(), level);
+    }
+    const from = uci.slice(0, 2) as Square;
+    const to = uci.slice(2, 4) as Square;
+    const promotion = uci.length > 4 ? (uci[4] as "q" | "r" | "b" | "n") : undefined;
+    move = chess.move({ from, to, promotion });
+    lastMove = [from as Key, to as Key];
   }
 
-  const from = uci.slice(0, 2) as Square;
-  const to = uci.slice(2, 4) as Square;
-  const promotion = uci.length > 4 ? (uci[4] as "q" | "r" | "b" | "n") : undefined;
-  const move = chess.move({ from, to, promotion });
   soundForMove(move);
-  lastMove = [from as Key, to as Key];
   thinking = false;
   render();
 }
@@ -431,6 +450,23 @@ function init(): void {
   el<HTMLSelectElement>("side").addEventListener("change", (e) => {
     playerColor = (e.target as HTMLSelectElement).value as Color;
     newGame();
+  });
+  el<HTMLSelectElement>("opponent").addEventListener("change", (e) => {
+    opponent = (e.target as HTMLSelectElement).value as Opponent;
+    if (opponent === "magnus" && !carlsen.ready) {
+      feedbackActive = true;
+      coachEl.textContent = "Waking up the Magnus bot (a one-time ~24 MB download)…";
+      carlsen
+        .load()
+        .then(() => {
+          coachEl.textContent = "Magnus bot is ready. Good luck out there.";
+        })
+        .catch(() => {
+          coachEl.textContent = "Could not load the Magnus bot, staying with the gentle engine.";
+          opponent = "stockfish";
+          el<HTMLSelectElement>("opponent").value = "stockfish";
+        });
+    }
   });
   el<HTMLButtonElement>("undo").addEventListener("click", takeBack);
   el<HTMLButtonElement>("hint").addEventListener("click", () => void showHint());
@@ -545,7 +581,15 @@ function init(): void {
       chess,
       engine,
       engineMove,
+      carlsen,
       onUserMove, // drive the full coached move path
+      magnusTop: async (fen: string) => {
+        const tmp = new Chess(fen);
+        const ranked = await carlsen.rank(tmp);
+        return ranked
+          .slice(0, 5)
+          .map((s) => `${s.move.from}${s.move.to}${s.move.promotion ?? ""}:${s.probability.toFixed(3)}`);
+      },
       loadFen: (fen: string) => {
         coachSeq++;
         chess.load(fen);
