@@ -12,8 +12,8 @@ real move on held-out games.
 > **Why not a chess-playing LLM?** The first version of this project fine-tuned a
 > 350M language model on `FEN -> UCI` text. It played weakly and produced *illegal*
 > moves often enough to need a random fallback, and nothing actually conditioned it
-> on Carlsen at play time. That approach is archived in [`legacy/`](legacy/). The
-> current design never plays an illegal move and has a real, reportable metric.
+> on Carlsen at play time. That approach has been removed (it lives in the git
+> history). The current design never plays an illegal move and has a real, reportable metric.
 
 ## 🎓 Play now: the beginner learning app
 
@@ -134,7 +134,7 @@ scripts/
   download_data.py  build_dataset.py  train.py  evaluate_model.py  play.py
 api/server.py    FastAPI move server
 tests/           encoding & engine invariants (run: make test)
-legacy/          the original LLM fine-tuning approach (archived)
+web-app/         the beginner browser app (board, opponent, coach, tutorial)
 ```
 
 ## Training at scale

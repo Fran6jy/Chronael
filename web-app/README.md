@@ -7,8 +7,6 @@ server, runs entirely in the browser.
 cream + sage-green board, soft-lavender highlights, Lora + Raleway typography, gentle
 shadows, SVG icons, WCAG-AA contrast and `prefers-reduced-motion` respected.
 
-![teaching board](docs/screenshot.png)
-
 ## What it does (beginner-first)
 
 - **Teaches the rules as you play** — click any piece and the squares it can legally
