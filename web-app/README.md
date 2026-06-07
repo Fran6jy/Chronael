@@ -45,7 +45,7 @@ facts kindly. That's why even a small free model gives correct coaching.
 Crucially for a beginner, **moves are translated to plain English before they ever reach
 the model**: `describeMove()` (in `src/coach.ts`) turns a move into words like "the
 bishop captures the knight" using chess.js, and the backend system prompt (in
-`server/coach.ts`) forbids any chess notation or numbers. So the learner reads "your
+`api/coach.ts`) forbids any chess notation or numbers. So the learner reads "your
 opponent's pawn can take your queen" — never "cxd5". It runs in two
 tiers: an instant offline rating + tip (Tier 0), and — only for mistakes/blunders — a
 natural-language explanation from OpenRouter (Tier 1), with a fallback chain across
@@ -125,8 +125,8 @@ Publish `dist/`, add a function for the coach, and redirect `/api/coach` to it:
   status = 200
 ```
 
-A function at `netlify/functions/coach.ts` can simply call `requestCoach()` from
-`server/coach.ts`. Set the same env vars in the Netlify dashboard.
+A function at `netlify/functions/coach.ts` can simply call `requestCoach()` (exported
+from `api/coach.ts`). Set the same env vars in the Netlify dashboard.
 
 ### Static-only (GitHub Pages, S3, …)
 

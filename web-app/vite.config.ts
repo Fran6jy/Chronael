@@ -1,5 +1,5 @@
 import { defineConfig, loadEnv, type Plugin } from "vite";
-import { requestCoach, type CoachFacts } from "./server/coach";
+import { requestCoach, type CoachFacts } from "./api/coach";
 
 // Dev-time middleware that exposes POST /api/coach. The OpenRouter key is read from
 // the Node process env here (loadEnv with an empty prefix reads ALL vars, not just
