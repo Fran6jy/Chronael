@@ -448,6 +448,47 @@ body {
   .panel { max-width: 528px; width: 100%; }
 }
 
+/* ---------- Buy me a coffee ---------- */
+.site-footer {
+  text-align: center;
+  padding: 6px 16px 44px;
+}
+.bmc-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 24px;
+  background: #e3b23c; /* warm gold, complements the sage + cream */
+  color: #3a2e12;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--ease), box-shadow var(--ease), background var(--ease);
+}
+.bmc-button:hover {
+  background: #d9a72f;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.bmc-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.footer-note {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin: 12px auto 0;
+  max-width: 46ch;
+}
+
 /* ---------- Respect reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
