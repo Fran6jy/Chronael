@@ -137,6 +137,32 @@ from `api/coach.ts`). Set the same env vars in the Netlify dashboard.
 (the offline ratings/tips still show). `base: "./"` in `vite.config.ts` means it works
 from any sub-path.
 
+## Online play (play a friend)
+
+The **"Play a friend online"** button creates a private game, gives you a shareable
+link, and syncs moves in real time when your friend opens it — anywhere in the world.
+It's powered by [PartyKit](https://partykit.io): an authoritative room server
+(`party/chess.ts`) validates every move with chess.js, so illegal or out-of-turn moves
+are impossible even if a client is tampered with.
+
+**Local dev:** run the party server alongside Vite:
+
+```bash
+npx partykit dev      # serves on 127.0.0.1:1999 (client defaults to this in dev)
+npm run dev           # in another terminal
+```
+
+**Deploy (one time):**
+
+```bash
+cd web-app
+npx partykit deploy   # logs in via GitHub, deploys to chronael-chess.<you>.partykit.dev
+```
+
+Then set **`VITE_PARTYKIT_HOST`** = that host (e.g. `chronael-chess.<you>.partykit.dev`)
+in your Vercel project's Environment Variables and redeploy. Until it's set, the
+"Play a friend" button stays disabled (the rest of the app is unaffected).
+
 ## How the difficulty works
 
 `src/engine.ts` maps each UI level to a Stockfish **Skill Level**, a per-move

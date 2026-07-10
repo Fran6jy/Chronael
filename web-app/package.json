@@ -12,9 +12,11 @@
   "dependencies": {
     "chess.js": "^1.4.0",
     "chessground": "^9.2.1",
-    "onnxruntime-web": "^1.26.0"
+    "onnxruntime-web": "^1.26.0",
+    "partysocket": "^1.3.0"
   },
   "devDependencies": {
+    "partykit": "^0.0.115",
     "stockfish": "16.0.0",
     "typescript": "^5.5.0",
     "vite": "^5.4.0"

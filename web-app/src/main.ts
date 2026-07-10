@@ -18,6 +18,7 @@ import { askPromotion } from "./promotion";
 import { PieceTutorial } from "./tutorial";
 import { playMove, playCapture, isMuted, setMuted } from "./sound";
 import { CarlsenEngine } from "./carlsen";
+import { OnlineGame, partykitConfigured, type OnlineColor, type OnlineState } from "./online";
 
 import type { Move } from "chess.js";
 
@@ -45,6 +46,12 @@ let beforeEval: { fen: string; scoreCp: number; bestUci: string } | null = null;
 let feedbackActive = false; // a move-rating message is showing; don't clobber with tips
 let coachSeq = 0; // guards against stale async coach updates after take-back / new game
 
+// Online ("play a friend") state.
+let onlineActive = false;
+let online: OnlineGame | null = null;
+let onlineColor: OnlineColor = "spectator";
+let onlineBothPresent = false;
+
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const statusEl = el<HTMLDivElement>("status");
 const coachEl = el<HTMLDivElement>("coach");
@@ -55,6 +62,9 @@ const capYoursEl = el<HTMLSpanElement>("cap-yours");
 const capTheirsEl = el<HTMLSpanElement>("cap-theirs");
 const capSummaryEl = el<HTMLDivElement>("cap-summary");
 const coachMoreEl = el<HTMLButtonElement>("coach-more");
+const onlineStatusEl = el<HTMLDivElement>("online-status");
+const onlineCoachEl = el<HTMLDivElement>("online-coach");
+const onlineLinkEl = el<HTMLInputElement>("online-link");
 
 let lastCoachFacts: CoachFacts | null = null;
 
@@ -149,8 +159,24 @@ let tutorial: PieceTutorial;
 function render(): void {
   const turn = colorToMove();
   const inCheck = chess.isCheck();
-  const myMove = playerTurn();
 
+  if (onlineActive) {
+    const myMove =
+      onlineColor !== "spectator" && turn === onlineColor && onlineBothPresent && !chess.isGameOver();
+    ground.set({
+      fen: chess.fen(),
+      turnColor: turn,
+      lastMove,
+      check: inCheck ? turn : undefined,
+      movable: { color: myMove ? (onlineColor as Color) : undefined, dests: myMove ? legalDests() : new Map() },
+    });
+    updateOnlineStatus(inCheck);
+    updateMoves();
+    updateCaptured();
+    return;
+  }
+
+  const myMove = playerTurn();
   ground.set({
     fen: chess.fen(),
     turnColor: turn,
@@ -165,6 +191,29 @@ function render(): void {
   updateStatus(inCheck);
   updateMoves();
   updateCaptured();
+}
+
+function updateOnlineStatus(inCheck: boolean): void {
+  if (chess.isGameOver()) {
+    if (chess.isCheckmate()) {
+      const winner = colorToMove() === "white" ? "black" : "white"; // side to move is mated
+      onlineStatusEl.textContent = winner === onlineColor ? "Checkmate — you won! 🎉" : "Checkmate — your friend won.";
+    } else {
+      onlineStatusEl.textContent = "Game over — it's a draw.";
+    }
+    onlineCoachEl.textContent = "Press Leave to go back, or start a new game with a fresh link.";
+    return;
+  }
+  if (!onlineBothPresent) {
+    onlineStatusEl.textContent = "Waiting for your friend to join…";
+    onlineCoachEl.textContent = "Share the invite link below. The game begins when they open it.";
+    return;
+  }
+  const myMove = colorToMove() === onlineColor;
+  onlineStatusEl.textContent = myMove
+    ? `Your move — you are ${onlineColor}.${inCheck ? " You're in check!" : ""}`
+    : "Your friend is thinking…";
+  onlineCoachEl.textContent = `Live game — you are ${onlineColor}.`;
 }
 
 function updateStatus(inCheck: boolean): void {
@@ -221,6 +270,10 @@ function isPromotion(from: Square, to: Square): boolean {
 function onUserMove(orig: Key, dest: Key): void {
   if (tutorial.active) {
     tutorial.handleMove(orig, dest);
+    return;
+  }
+  if (onlineActive) {
+    handleOnlineUserMove(orig, dest);
     return;
   }
 
@@ -327,7 +380,7 @@ async function prepareCoach(): Promise<void> {
 }
 
 async function engineMove(): Promise<void> {
-  if (chess.isGameOver() || tutorial.active) return;
+  if (chess.isGameOver() || tutorial.active || onlineActive) return;
   const level = LEVELS[levelIndex];
   thinking = true;
   updateStatus(chess.isCheck());
@@ -424,6 +477,97 @@ async function beginTurns(): Promise<void> {
   await prepareCoach();
 }
 
+// ---------- Online: play a friend ----------
+
+function shareUrl(roomId: string): string {
+  const url = new URL(window.location.href);
+  url.searchParams.set("room", roomId);
+  return url.toString();
+}
+
+function showOnlinePanel(): void {
+  el<HTMLElement>("play-panel").hidden = true;
+  el<HTMLElement>("tutorial-panel").hidden = true;
+  el<HTMLElement>("online-panel").hidden = false;
+}
+
+function applyOnlineState(state: OnlineState): void {
+  const prevFen = chess.fen();
+  chess.load(state.fen);
+  onlineBothPresent = state.whitePresent && state.blackPresent;
+  lastMove = state.lastMove ? [state.lastMove[0] as Key, state.lastMove[1] as Key] : undefined;
+  // Sound only for the opponent's move: our own move already played locally, and its
+  // echo arrives with a fen we already have (prevFen === state.fen), so it's skipped.
+  if (state.lastMove && state.fen !== prevFen) playMove();
+  render();
+}
+
+function applyOnlineMove(orig: Key, dest: Key, promotion: "q" | "r" | "b" | "n" | undefined): void {
+  const move = chess.move({ from: orig as Square, to: dest as Square, promotion });
+  if (!move) {
+    render();
+    return;
+  }
+  soundForMove(move);
+  lastMove = [orig, dest];
+  render();
+  online?.move(orig as string, dest as string, promotion);
+}
+
+function handleOnlineUserMove(orig: Key, dest: Key): void {
+  const from = orig as Square;
+  const to = dest as Square;
+  if (isPromotion(from, to)) {
+    void askPromotion(onlineColor === "black" ? "black" : "white").then((piece) =>
+      applyOnlineMove(orig, dest, piece),
+    );
+  } else {
+    applyOnlineMove(orig, dest, undefined);
+  }
+}
+
+function enterOnline(roomId: string): void {
+  coachSeq++; // cancel any pending coaching
+  onlineActive = true;
+  onlineBothPresent = false;
+  chess.reset();
+  lastMove = undefined;
+  ground.setShapes([]);
+  showOnlinePanel();
+  onlineLinkEl.value = shareUrl(roomId);
+
+  online = new OnlineGame();
+  online.onInit = (color, state) => {
+    onlineColor = color;
+    playerColor = color === "black" ? "black" : "white"; // orients board + captured-tray view
+    ground.set({ orientation: playerColor });
+    applyOnlineState(state);
+  };
+  online.onState = (state) => applyOnlineState(state);
+  online.connect(roomId);
+}
+
+function createOnlineGame(): void {
+  const roomId = Math.random().toString(36).slice(2, 10);
+  window.history.replaceState({}, "", shareUrl(roomId));
+  enterOnline(roomId);
+}
+
+function leaveOnline(): void {
+  online?.close();
+  online = null;
+  onlineActive = false;
+  onlineColor = "spectator";
+  const url = new URL(window.location.href);
+  url.searchParams.delete("room");
+  window.history.replaceState({}, "", url.toString());
+  el<HTMLElement>("online-panel").hidden = true;
+  el<HTMLElement>("play-panel").hidden = false;
+  playerColor = "white";
+  el<HTMLSelectElement>("side").value = "white";
+  newGame();
+}
+
 function init(): void {
   const config: Config = {
     fen: chess.fen(),
@@ -493,6 +637,25 @@ function init(): void {
   });
   el<HTMLButtonElement>("tut-exit").addEventListener("click", () => tutorial.exit());
 
+  // Online: play a friend. Disabled until a PartyKit host is configured.
+  const playFriendBtn = el<HTMLButtonElement>("play-friend");
+  if (!partykitConfigured()) {
+    playFriendBtn.disabled = true;
+    playFriendBtn.title = "Online play is being set up (needs VITE_PARTYKIT_HOST).";
+  }
+  playFriendBtn.addEventListener("click", createOnlineGame);
+  el<HTMLButtonElement>("online-leave").addEventListener("click", leaveOnline);
+  el<HTMLButtonElement>("online-copy").addEventListener("click", () => {
+    onlineLinkEl.select();
+    const btn = el<HTMLButtonElement>("online-copy");
+    const done = () => {
+      btn.textContent = "Copied!";
+      window.setTimeout(() => (btn.textContent = "Copy"), 1200);
+    };
+    if (navigator.clipboard) navigator.clipboard.writeText(onlineLinkEl.value).then(done).catch(done);
+    else done();
+  });
+
   // Sound mute toggle.
   const muteBtn = el<HTMLButtonElement>("mute");
   const reflectMute = () => {
@@ -561,19 +724,25 @@ function init(): void {
   });
   el<HTMLButtonElement>("welcome-play").addEventListener("click", dismissWelcome);
 
-  let seen = false;
-  try {
-    seen = localStorage.getItem(seenKey) === "1";
-  } catch {
-    /* ignore */
+  // Joining a friend's game via a shared ?room= link: skip everything else.
+  const roomParam = new URL(window.location.href).searchParams.get("room");
+  if (roomParam) {
+    welcome.hidden = true;
+    enterOnline(roomParam);
+  } else {
+    let seen = false;
+    try {
+      seen = localStorage.getItem(seenKey) === "1";
+    } catch {
+      /* ignore */
+    }
+    if (!seen) {
+      welcome.hidden = false;
+      el<HTMLButtonElement>("welcome-learn").focus();
+    }
+    render();
+    void beginTurns();
   }
-  if (!seen) {
-    welcome.hidden = false;
-    el<HTMLButtonElement>("welcome-learn").focus();
-  }
-
-  render();
-  void beginTurns();
 
   // Dev-only test hook for verifying the play loop from the console.
   if (import.meta.env.DEV) {

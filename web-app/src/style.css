@@ -181,6 +181,8 @@ body {
   transition: background var(--ease), border-color var(--ease), box-shadow var(--ease);
 }
 .btn:hover { background: #ece7da; border-color: var(--sage); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:disabled:hover { background: var(--surface-2); border-color: var(--border); }
 .btn .icon { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .btn-primary { background: var(--cta); border-color: var(--cta-deep); color: #fff; }
 .btn-primary:hover { background: var(--cta-deep); border-color: var(--cta-deep); }
@@ -188,6 +190,22 @@ body {
 .btn-soft:hover { background: #e7def3; border-color: var(--lavender); }
 .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); }
 .btn-ghost:hover { background: var(--surface-2); border-color: var(--border); }
+.btn-online { background: #7b8fd4; border-color: #6b7fc4; color: #fff; }
+.btn-online:hover { background: #6b7fc4; border-color: #6b7fc4; }
+
+.share-row { display: flex; gap: 8px; }
+.share-input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+.share-input:focus { outline: none; border-color: var(--sage); }
 
 :focus-visible { outline: 3px solid rgba(127, 160, 132, 0.55); outline-offset: 2px; border-radius: 6px; }
 

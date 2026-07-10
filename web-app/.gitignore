@@ -11,3 +11,6 @@ dist/
 
 # Track the shipped browser model (overrides the root *.onnx ignore)
 !public/models/chronael.int8.onnx
+
+# PartyKit local dev artifacts
+.partykit/

@@ -144,6 +144,12 @@
                   New game
                 </button>
               </div>
+              <div class="buttons">
+                <button id="play-friend" type="button" class="btn btn-online">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  Play a friend online
+                </button>
+              </div>
             </div>
 
             <div class="moves-wrap">
@@ -163,6 +169,22 @@
               <button id="tut-next" type="button" class="btn btn-primary">Next piece</button>
             </div>
             <button id="tut-exit" type="button" class="btn btn-ghost tut-exit">Exit to a game</button>
+          </section>
+
+          <!-- ONLINE MODE (play a friend) -->
+          <section id="online-panel" hidden>
+            <div id="online-status" class="status" aria-live="polite">Setting up your game…</div>
+            <div id="online-coach" class="coach">Share the link below with a friend. When they open it, the game begins.</div>
+
+            <label class="control" style="margin-top:14px">
+              Invite link
+              <div class="share-row">
+                <input id="online-link" class="share-input" type="text" readonly />
+                <button id="online-copy" type="button" class="btn">Copy</button>
+              </div>
+            </label>
+
+            <button id="online-leave" type="button" class="btn btn-ghost tut-exit">Leave game</button>
           </section>
         </aside>
       </main>
