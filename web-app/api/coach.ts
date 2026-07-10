@@ -106,9 +106,45 @@ export async function requestCoach(facts: CoachFacts, env: CoachEnv): Promise<Co
   return { status: 502, body: { error: lastError } };
 }
 
+// Best-effort per-IP rate limit. This endpoint is an unauthenticated proxy to the
+// OpenRouter key, so a bare minimum is worth having to protect the free-tier quota.
+// It is in-memory per warm instance (not a shared store), so it caps a single client
+// hammering one instance; for hard guarantees use Vercel KV / Upstash instead.
+const WINDOW_MS = 60_000;
+const MAX_PER_WINDOW = 20;
+const hits = new Map<string, number[]>();
+
+function rateLimited(ip: string): boolean {
+  const now = Date.now();
+  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
+  recent.push(now);
+  hits.set(ip, recent);
+  if (hits.size > 5000) {
+    for (const [k, v] of hits) if (v.every((t) => now - t >= WINDOW_MS)) hits.delete(k);
+  }
+  return recent.length > MAX_PER_WINDOW;
+}
+
+const RATINGS = new Set(["blunder", "mistake", "inaccuracy", "good", "great"]);
+
+function isValidFacts(f: unknown): f is CoachFacts {
+  if (!f || typeof f !== "object") return false;
+  const o = f as Record<string, unknown>;
+  const strOk = (v: unknown, max: number) => v === undefined || (typeof v === "string" && v.length <= max);
+  if (typeof o.movedPlain !== "string" || o.movedPlain.length > 300) return false;
+  if (typeof o.classification !== "string" || !RATINGS.has(o.classification)) return false;
+  if (!strOk(o.bestPlain, 300) || !strOk(o.threatPlain, 300)) return false;
+  if (o.followup !== undefined && typeof o.followup !== "boolean") return false;
+  return true;
+}
+
 /** Vercel serverless handler for POST /api/coach. */
 export default async function handler(
-  req: { method?: string; body?: unknown },
+  req: {
+    method?: string;
+    body?: unknown;
+    headers?: Record<string, string | string[] | undefined>;
+  },
   res: {
     status: (code: number) => { json: (body: unknown) => void; end: (body?: string) => void };
   },
@@ -117,8 +153,20 @@ export default async function handler(
     res.status(405).end("Method Not Allowed");
     return;
   }
+
+  const fwd = req.headers?.["x-forwarded-for"];
+  const ip = (Array.isArray(fwd) ? fwd[0] : fwd ?? "unknown").toString().split(",")[0].trim();
+  if (rateLimited(ip)) {
+    res.status(429).json({ error: "rate_limited" });
+    return;
+  }
+
   try {
-    const facts = (typeof req.body === "string" ? JSON.parse(req.body) : req.body) as CoachFacts;
+    const facts = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    if (!isValidFacts(facts)) {
+      res.status(400).json({ error: "bad_request" });
+      return;
+    }
     const result = await requestCoach(facts, {
       OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
       COACH_MODELS: process.env.COACH_MODELS,
