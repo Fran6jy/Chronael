@@ -1,6 +1,0 @@
-{
-  "$schema": "https://www.partykit.io/schema.json",
-  "name": "chronael-chess",
-  "main": "party/chess.ts",
-  "compatibilityDate": "2024-11-01"
-}

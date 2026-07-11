@@ -141,25 +141,26 @@ from any sub-path.
 
 The **"Play a friend online"** button creates a private game, gives you a shareable
 link, and syncs moves in real time when your friend opens it — anywhere in the world.
-It's powered by [PartyKit](https://partykit.io): an authoritative room server
-(`party/chess.ts`) validates every move with chess.js, so illegal or out-of-turn moves
-are impossible even if a client is tampered with.
+It's powered by a **Cloudflare Worker + Durable Object** (`worker/chess.ts`): one
+Durable Object per game room, authoritative, validating every move with chess.js, so
+illegal or out-of-turn moves are impossible even if a client is tampered with.
 
-**Local dev:** run the party server alongside Vite:
+**Local dev:** run the Worker alongside Vite:
 
 ```bash
-npx partykit dev      # serves on 127.0.0.1:1999 (client defaults to this in dev)
+npx wrangler dev      # serves the Worker on 127.0.0.1:8787 (client defaults to this in dev)
 npm run dev           # in another terminal
 ```
 
-**Deploy (one time):**
+**Deploy (one time):** free Cloudflare account, then
 
 ```bash
 cd web-app
-npx partykit deploy   # logs in via GitHub, deploys to chronael-chess.<you>.partykit.dev
+npx wrangler login    # opens the browser to authorize
+npx wrangler deploy   # deploys to chronael-chess.<you>.workers.dev
 ```
 
-Then set **`VITE_PARTYKIT_HOST`** = that host (e.g. `chronael-chess.<you>.partykit.dev`)
+Then set **`VITE_GAME_HOST`** = that host (e.g. `chronael-chess.<you>.workers.dev`)
 in your Vercel project's Environment Variables and redeploy. Until it's set, the
 "Play a friend" button stays disabled (the rest of the app is unaffected).
 

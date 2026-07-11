@@ -1,8 +1,7 @@
-// Client side of "Play a friend": a thin wrapper over a PartySocket connection to the
-// authoritative room server (party/chess.ts). The server is the source of truth; we
-// send our moves and render whatever position it broadcasts back.
-
-import PartySocket from "partysocket";
+// Client side of "Play a friend": a WebSocket to the authoritative Cloudflare Worker /
+// Durable Object room server (worker/chess.ts). The server is the source of truth; we
+// send our moves and render whatever position it broadcasts back, so two browsers stay
+// in sync wherever they are.
 
 export type OnlineColor = "white" | "black" | "spectator";
 
@@ -16,24 +15,29 @@ export interface OnlineState {
   result: string | null;
 }
 
-// In dev, `partykit dev` serves on 127.0.0.1:1999. In production set
-// VITE_PARTYKIT_HOST to your deployed host (e.g. chronael-chess.<user>.partykit.dev).
-const HOST = (import.meta.env.VITE_PARTYKIT_HOST as string | undefined) || "127.0.0.1:1999";
+// In dev, `wrangler dev` serves the Worker on 127.0.0.1:8787. In production set
+// VITE_GAME_HOST to your deployed Worker host (e.g. chronael-chess.<you>.workers.dev).
+const HOST = (import.meta.env.VITE_GAME_HOST as string | undefined) || "127.0.0.1:8787";
 
-export function partykitConfigured(): boolean {
-  return Boolean(import.meta.env.VITE_PARTYKIT_HOST) || import.meta.env.DEV;
+export function gameConfigured(): boolean {
+  return Boolean(import.meta.env.VITE_GAME_HOST) || import.meta.env.DEV;
+}
+
+function wsUrl(room: string): string {
+  const proto = /^(localhost|127\.)/.test(HOST) ? "ws" : "wss";
+  return `${proto}://${HOST}/room/${encodeURIComponent(room)}`;
 }
 
 export class OnlineGame {
-  private socket: PartySocket | null = null;
+  private ws: WebSocket | null = null;
   color: OnlineColor = "spectator";
 
   onInit?: (color: OnlineColor, state: OnlineState) => void;
   onState?: (state: OnlineState) => void;
 
   connect(room: string): void {
-    this.socket = new PartySocket({ host: HOST, room });
-    this.socket.addEventListener("message", (e: MessageEvent) => {
+    this.ws = new WebSocket(wsUrl(room));
+    this.ws.addEventListener("message", (e: MessageEvent) => {
       let msg: { type?: string; color?: OnlineColor } & Partial<OnlineState>;
       try {
         msg = JSON.parse(e.data as string);
@@ -50,15 +54,17 @@ export class OnlineGame {
   }
 
   move(from: string, to: string, promotion?: string): void {
-    this.socket?.send(JSON.stringify({ type: "move", from, to, promotion }));
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: "move", from, to, promotion }));
+    }
   }
 
   reset(): void {
-    this.socket?.send(JSON.stringify({ type: "reset" }));
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ type: "reset" }));
   }
 
   close(): void {
-    this.socket?.close();
-    this.socket = null;
+    this.ws?.close();
+    this.ws = null;
   }
 }

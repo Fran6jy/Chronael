@@ -18,7 +18,7 @@ import { askPromotion } from "./promotion";
 import { PieceTutorial } from "./tutorial";
 import { playMove, playCapture, isMuted, setMuted } from "./sound";
 import { CarlsenEngine } from "./carlsen";
-import { OnlineGame, partykitConfigured, type OnlineColor, type OnlineState } from "./online";
+import { OnlineGame, gameConfigured, type OnlineColor, type OnlineState } from "./online";
 
 import type { Move } from "chess.js";
 
@@ -639,9 +639,9 @@ function init(): void {
 
   // Online: play a friend. Disabled until a PartyKit host is configured.
   const playFriendBtn = el<HTMLButtonElement>("play-friend");
-  if (!partykitConfigured()) {
+  if (!gameConfigured()) {
     playFriendBtn.disabled = true;
-    playFriendBtn.title = "Online play is being set up (needs VITE_PARTYKIT_HOST).";
+    playFriendBtn.title = "Online play is being set up (needs VITE_GAME_HOST).";
   }
   playFriendBtn.addEventListener("click", createOnlineGame);
   el<HTMLButtonElement>("online-leave").addEventListener("click", leaveOnline);

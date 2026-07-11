@@ -1,0 +1,13 @@
+name = "chronael-chess"
+main = "worker/chess.ts"
+compatibility_date = "2025-01-01"
+
+# One Durable Object per game room. Declared as a SQLite-backed class so it runs on
+# the Cloudflare free plan (the DO itself keeps game state in memory; no storage used).
+[[durable_objects.bindings]]
+name = "CHESS_ROOM"
+class_name = "ChessRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChessRoom"]
