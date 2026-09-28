@@ -2,215 +2,314 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Chronael — Learn Chess, Calmly</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Chronael — Learn chess, calmly</title>
+    <meta name="description" content="Learn chess from your very first move. A kind coach explains every move in plain English, a daily puzzle, and online games with friends. Free." />
+    <meta name="theme-color" content="#233e31" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Chronael" />
+    <meta property="og:title" content="Chronael — Learn chess, calmly" />
+    <meta property="og:description" content="A gentle coach explains every move in plain English. Daily puzzles, and games with friends anywhere." />
+    <meta property="og:url" content="https://chronael.vercel.app/" />
+    <meta property="og:image" content="https://chronael.vercel.app/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://chronael.vercel.app/og.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap"
       rel="stylesheet"
     />
   </head>
   <body>
-    <div id="app">
-      <!-- First-run welcome (shown once, for newcomers) -->
-      <div id="welcome" class="welcome-overlay" hidden>
-        <div class="welcome-card" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
-          <svg class="welcome-mark" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M9 4a3 3 0 1 1 4.5 2.6c1.2.7 2 1.9 2.2 3.4H6.3c.2-1.5 1-2.7 2.2-3.4A3 3 0 0 1 9 4Z" />
-            <path d="M7 11h10l-1.2 5H8.2L7 11Z" />
-            <path d="M6 17h12v3H6z" />
-          </svg>
-          <h2 id="welcome-title" class="welcome-title">Welcome to Chronael</h2>
-          <p class="welcome-sub">A calm place to learn chess, one move at a time. Where would you like to begin?</p>
-          <div class="welcome-choices">
-            <button id="welcome-learn" type="button" class="welcome-choice">
-              <svg class="wc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m22 10-10-5L2 10l10 5 10-5Z"/><path d="M6 12v5c0 1 2.7 2 6 2s6-1 6-2v-5"/></svg>
-              <span class="wc-title">Learn the pieces</span>
-              <span class="wc-sub">Never played before? Start here — we’ll show you how each piece moves.</span>
-            </button>
-            <button id="welcome-play" type="button" class="welcome-choice">
-              <svg class="wc-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
-              <span class="wc-title">Play a game</span>
-              <span class="wc-sub">Jump in against a gentle opponent you can actually beat.</span>
-            </button>
-          </div>
-        </div>
-      </div>
+    <a class="skip-link" href="#main">Skip to content</a>
 
-      <header class="topbar">
-        <button id="mute" type="button" class="mute-btn" aria-pressed="false" aria-label="Mute sounds" title="Sound on/off">
+    <div id="update-banner" class="banner" role="status" hidden>
+      <span>A fresh version of Chronael is ready.</span>
+      <button id="update-reload" type="button" class="banner-btn">Reload</button>
+    </div>
+
+    <header class="topbar">
+      <button id="brand" type="button" class="brand" aria-label="Chronael home">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 4a3 3 0 1 1 4.5 2.6c1.2.7 2 1.9 2.2 3.4H6.3c.2-1.5 1-2.7 2.2-3.4A3 3 0 0 1 9 4Z" />
+          <path d="M7 11h10l-1.2 5H8.2L7 11Z" />
+          <path d="M6 17h12v3H6z" />
+        </svg>
+        <span>Chronael</span>
+      </button>
+      <nav class="topnav" aria-label="Main">
+        <button id="install" type="button" class="chip" hidden>Install app</button>
+        <button id="mute" type="button" class="icon-btn" aria-pressed="false" aria-label="Mute sounds" title="Sound on/off">
           <svg class="mute-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
           <svg class="mute-off" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>
         </button>
-        <h1 class="brand">
-          <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M9 4a3 3 0 1 1 4.5 2.6c1.2.7 2 1.9 2.2 3.4H6.3c.2-1.5 1-2.7 2.2-3.4A3 3 0 0 1 9 4Z" />
-            <path d="M7 11h10l-1.2 5H8.2L7 11Z" />
-            <path d="M6 17h12v3H6z" />
-          </svg>
-          Chronael
-        </h1>
-        <p class="tagline">Learn chess gently. Click a piece to see where it can go.</p>
-      </header>
+      </nav>
+    </header>
 
-      <main class="layout">
-        <div class="board-wrap">
-          <div id="board" class="cg-wrap"></div>
+    <main id="main">
+      <!-- ================= HOME ================= -->
+      <section id="home" class="home" aria-labelledby="hero-title">
+        <div class="hero">
+          <p class="eyebrow">A kind place to learn chess</p>
+          <h1 id="hero-title" class="hero-title">Learn chess, <em>calmly.</em></h1>
+          <p class="hero-sub">
+            Every move you make, a patient coach tells you what it did, in plain English, no notation.
+            Beat a gentle bot, solve today’s puzzle, or send a friend a link and play from anywhere.
+          </p>
+          <ul class="hero-points" aria-label="What you get">
+            <li>Explained moves, good and bad</li>
+            <li>Take-backs and hints, always</li>
+            <li>Free, no account</li>
+          </ul>
+        </div>
 
-          <!-- Promotion picker (hidden until a pawn reaches the last rank) -->
-          <div id="promotion" class="promotion-overlay" hidden>
-            <div class="promotion-card" role="dialog" aria-modal="true" aria-label="Choose a piece to promote to">
-              <p class="promotion-title">Promote your pawn to…</p>
-              <div id="promotion-choices" class="promotion-choices"></div>
+        <aside class="entry" aria-labelledby="entry-title">
+          <h2 id="entry-title" class="entry-title">Start playing</h2>
+          <label class="field">
+            <span>Your name <small>(shown to friends)</small></span>
+            <input id="name" type="text" maxlength="20" autocomplete="nickname" placeholder="e.g. Ada" />
+          </label>
+          <label class="field">
+            <span>Difficulty</span>
+            <select id="level">
+              <option value="0">1 · Gentle start (makes mistakes)</option>
+              <option value="1">2 · Very easy</option>
+              <option value="2" selected>3 · Easy</option>
+              <option value="3">4 · Casual</option>
+              <option value="4">5 · Improving</option>
+              <option value="5">6 · Club</option>
+              <option value="6">7 · Strong</option>
+              <option value="7">8 · Toughest</option>
+            </select>
+          </label>
+          <fieldset class="seg" aria-label="Your colour">
+            <legend>You play</legend>
+            <label><input type="radio" name="side" value="white" checked /><span>White</span></label>
+            <label><input type="radio" name="side" value="black" /><span>Black</span></label>
+            <label><input type="radio" name="side" value="random" /><span>Random</span></label>
+          </fieldset>
+          <button id="start-bot" type="button" class="btn btn-primary btn-lg">Play the computer</button>
+          <button id="play-friend" type="button" class="btn btn-gold btn-lg">Invite a friend</button>
+          <p class="entry-note">Your friend just opens the link. No sign-up for either of you.</p>
+        </aside>
+
+        <div class="rows">
+          <h2 class="rows-title">Ways to play</h2>
+          <div class="cards">
+            <button id="card-learn" type="button" class="home-card featured">
+              <span class="card-kicker">New to chess?</span>
+              <span class="card-title">Learn the pieces</span>
+              <span class="card-sub">Six short lessons. Move each piece yourself and see where it can go.</span>
+              <span class="card-cta">Start lesson →</span>
+            </button>
+            <button id="card-puzzle" type="button" class="home-card">
+              <span class="card-kicker">Daily puzzle <span id="streak-badge" class="streak" hidden></span></span>
+              <span class="card-title" id="puzzle-card-title">Today’s puzzle</span>
+              <span class="card-sub" id="puzzle-card-sub">One new puzzle every day. Keep your streak going.</span>
+              <span class="card-cta">Solve →</span>
+            </button>
+            <button id="card-bot" type="button" class="home-card">
+              <span class="card-kicker">Practice</span>
+              <span class="card-title">Gentle bot</span>
+              <span class="card-sub">Eight levels, from “makes mistakes on purpose” to properly strong.</span>
+              <span class="card-cta">Play →</span>
+            </button>
+            <button id="card-magnus" type="button" class="home-card">
+              <span class="card-kicker">Challenge</span>
+              <span class="card-title">The Magnus bot</span>
+              <span class="card-sub">A neural net trained on Magnus Carlsen’s games. It plays like him 27% of the time.</span>
+              <span class="card-cta">Face it →</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= GAME ================= -->
+      <section id="game" class="game" hidden aria-label="Game">
+        <div class="board-col">
+          <div id="turn-banner" class="turn-banner" role="status" aria-live="polite">
+            <span class="turn-dot" aria-hidden="true"></span>
+            <span id="status">Your move.</span>
+          </div>
+
+          <div class="player-row" id="row-top">
+            <span class="avatar" id="avatar-top" aria-hidden="true">C</span>
+            <div class="player-meta">
+              <span class="player-name" id="name-top">Chronael</span>
+              <span class="player-sub" id="sub-top">Level 3</span>
             </div>
+            <span id="cap-theirs" class="cap-glyphs" aria-label="Pieces they have captured"></span>
+          </div>
+
+          <div class="board-wrap">
+            <div id="board" class="cg-wrap"></div>
+            <div id="promotion" class="promotion-overlay" hidden>
+              <div class="promotion-card" role="dialog" aria-modal="true" aria-label="Choose a piece to promote to">
+                <p class="promotion-title">Promote your pawn to…</p>
+                <div id="promotion-choices" class="promotion-choices"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="player-row" id="row-bottom">
+            <span class="avatar you" id="avatar-bottom" aria-hidden="true">Y</span>
+            <div class="player-meta">
+              <span class="player-name" id="name-bottom">You</span>
+              <span class="player-sub" id="sub-bottom">White</span>
+            </div>
+            <span id="cap-yours" class="cap-glyphs" aria-label="Pieces you have captured"></span>
           </div>
         </div>
 
-        <aside class="panel">
-          <!-- PLAY MODE -->
-          <section id="play-panel">
-            <div id="status" class="status" aria-live="polite">Your move — you are White.</div>
-
+        <aside class="side">
+          <!-- PLAY vs computer -->
+          <section id="play-panel" class="side-card">
             <div class="evalrow">
-              <div class="evalbar" title="Who is ahead">
-                <div id="eval-fill" class="eval-fill"></div>
-              </div>
+              <div class="evalbar" title="Who is ahead"><div id="eval-fill" class="eval-fill"></div></div>
               <div id="rating" class="rating"></div>
             </div>
+            <div id="cap-summary" class="cap-summary">Even material</div>
 
-            <div id="captured" class="captured">
-              <div class="cap-row"><span class="cap-side">You’ve won</span><span id="cap-yours" class="cap-glyphs"></span></div>
-              <div class="cap-row"><span class="cap-side">Opponent won</span><span id="cap-theirs" class="cap-glyphs"></span></div>
-              <div id="cap-summary" class="cap-summary">Even material</div>
+            <div class="coach-box">
+              <span class="coach-label">Coach</span>
+              <div id="coach" class="coach" aria-live="polite">Tip: tap a piece to see where it can go.</div>
+              <button id="coach-more" type="button" class="link-btn" hidden>Tell me more →</button>
             </div>
 
-            <div id="coach" class="coach" aria-live="polite">Tip: pieces light up the squares they can move to.</div>
-            <button id="coach-more" type="button" class="coach-more" hidden>Tell me more →</button>
+            <div class="btn-grid">
+              <button id="undo" type="button" class="btn">Take back</button>
+              <button id="hint" type="button" class="btn">Hint + why</button>
+              <button id="newgame" type="button" class="btn">New game</button>
+              <button id="resign-bot" type="button" class="btn btn-quiet">Resign</button>
+            </div>
 
-            <div class="controls">
-              <label class="control">
-                Difficulty
-                <select id="level">
-                  <option value="0">1 · Gentle start (makes mistakes)</option>
-                  <option value="1">2 · Very easy</option>
-                  <option value="2" selected>3 · Easy</option>
-                  <option value="3">4 · Casual</option>
-                  <option value="4">5 · Improving</option>
-                  <option value="5">6 · Club</option>
-                  <option value="6">7 · Strong</option>
-                  <option value="7">8 · Toughest</option>
-                </select>
-              </label>
-
-              <label class="control">
-                You play
-                <select id="side">
-                  <option value="white" selected>White (move first)</option>
-                  <option value="black">Black</option>
-                </select>
-              </label>
-
-              <label class="control">
-                Opponent
+            <details class="more">
+              <summary>Settings</summary>
+              <label class="field">
+                <span>Opponent</span>
                 <select id="opponent">
                   <option value="stockfish" selected>Gentle coach engine</option>
-                  <option value="magnus">Magnus bot · graduate (27% move-match)</option>
+                  <option value="magnus">Magnus bot (27% move-match)</option>
                 </select>
               </label>
-
-              <label class="control control-check">
-                <input type="checkbox" id="coords" />
-                Show square labels (a–h, 1–8)
-              </label>
-
-              <div class="buttons">
-                <button id="undo" type="button" class="btn">
-                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
-                  Take back
-                </button>
-                <button id="hint" type="button" class="btn">
-                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.1 14c.4-1 .9-1.6 1.7-2.4A6 6 0 1 0 6 8c0 1.6.8 2.8 1.2 3.6.6.9 1.1 1.4 1.5 2.4"/></svg>
-                  Hint
-                </button>
-              </div>
-              <div class="buttons">
-                <button id="learn" type="button" class="btn btn-soft">
-                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m22 10-10-5L2 10l10 5 10-5Z"/><path d="M6 12v5c0 1 2.7 2 6 2s6-1 6-2v-5"/></svg>
-                  Learn the pieces
-                </button>
-                <button id="newgame" type="button" class="btn btn-primary">
-                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
-                  New game
-                </button>
-              </div>
-              <div class="buttons">
-                <button id="play-friend" type="button" class="btn btn-online">
-                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                  Play a friend online
-                </button>
-              </div>
-            </div>
+              <label class="check"><input type="checkbox" id="coords" /> Show square labels (a–h, 1–8)</label>
+            </details>
 
             <div class="moves-wrap">
-              <h2>Moves</h2>
+              <h3>Moves</h3>
               <ol id="moves" class="moves"></ol>
             </div>
           </section>
 
-          <!-- TUTORIAL MODE -->
-          <section id="tutorial-panel" hidden>
+          <!-- TUTORIAL -->
+          <section id="tutorial-panel" class="side-card" hidden>
             <div class="tut-progress" id="tut-progress">Piece 1 of 6</div>
             <h2 class="tut-title" id="tut-title">The Pawn</h2>
             <p class="tut-text" id="tut-text"></p>
             <p class="tut-hint" id="tut-hint">Try moving the highlighted piece.</p>
-            <div class="buttons">
+            <div class="btn-row">
               <button id="tut-prev" type="button" class="btn">Back</button>
               <button id="tut-next" type="button" class="btn btn-primary">Next piece</button>
             </div>
-            <button id="tut-exit" type="button" class="btn btn-ghost tut-exit">Exit to a game</button>
+            <button id="tut-exit" type="button" class="btn btn-quiet full">Exit to a game</button>
           </section>
 
-          <!-- ONLINE MODE (play a friend) -->
-          <section id="online-panel" hidden>
-            <div id="online-status" class="status" aria-live="polite">Setting up your game…</div>
+          <!-- DAILY PUZZLE -->
+          <section id="puzzle-panel" class="side-card" hidden>
+            <div class="tut-progress" id="puzzle-meta">Daily puzzle</div>
+            <h2 class="tut-title" id="puzzle-goal">Find the best move</h2>
+            <p class="tut-text" id="puzzle-text">Your opponent just moved (highlighted). Your turn.</p>
+            <div class="streak-row"><span class="streak-flame" aria-hidden="true">🔥</span><span id="puzzle-streak">No streak yet</span></div>
+            <div class="btn-row">
+              <button id="puzzle-hint" type="button" class="btn">Hint</button>
+              <button id="puzzle-reveal" type="button" class="btn">Show solution</button>
+            </div>
+            <button id="puzzle-exit" type="button" class="btn btn-quiet full">Back home</button>
+          </section>
+
+          <!-- ONLINE -->
+          <section id="online-panel" class="side-card" hidden>
+            <div class="conn" id="conn"><span class="conn-dot"></span><span id="conn-text">Connecting…</span></div>
             <div id="online-coach" class="coach">Share the link below with a friend. When they open it, the game begins.</div>
 
-            <label class="control" style="margin-top:14px">
-              Invite link
-              <div class="share-row">
-                <input id="online-link" class="share-input" type="text" readonly />
-                <button id="online-copy" type="button" class="btn">Copy</button>
+            <div id="invite-box" class="invite">
+              <label class="field">
+                <span>Invite link</span>
+                <div class="share-row">
+                  <input id="online-link" class="share-input" type="text" readonly />
+                  <button id="online-copy" type="button" class="btn">Copy</button>
+                </div>
+              </label>
+              <p class="waiting"><span class="waiting-dots" aria-hidden="true"><i></i><i></i><i></i></span> Waiting for your friend</p>
+              <div id="fallback" class="fallback" hidden>
+                <p>Nobody yet? Play the computer while you wait. Your link keeps working.</p>
+                <button id="fallback-bot" type="button" class="btn btn-primary full">Play the computer instead</button>
               </div>
-            </label>
+            </div>
 
-            <button id="online-leave" type="button" class="btn btn-ghost tut-exit">Leave game</button>
+            <div id="draw-offer" class="notice" hidden>
+              <p>Your opponent offers a draw.</p>
+              <div class="btn-row">
+                <button id="draw-accept" type="button" class="btn btn-primary">Accept</button>
+                <button id="draw-decline" type="button" class="btn">Decline</button>
+              </div>
+            </div>
+
+            <div id="away" class="notice warn" hidden>
+              <p id="away-text">Your opponent disconnected.</p>
+              <button id="claim-win" type="button" class="btn btn-primary full" hidden>Claim the win</button>
+            </div>
+
+            <div id="online-actions" class="btn-row">
+              <button id="offer-draw" type="button" class="btn">Offer draw</button>
+              <button id="resign" type="button" class="btn btn-quiet">Resign</button>
+            </div>
+
+            <p id="spectators" class="muted small" hidden></p>
+            <div class="moves-wrap">
+              <h3>Moves</h3>
+              <ol id="online-moves" class="moves"></ol>
+            </div>
+            <button id="online-leave" type="button" class="btn btn-quiet full">Leave game</button>
           </section>
         </aside>
-      </main>
+      </section>
+    </main>
 
-      <footer class="site-footer">
-        <a
-          id="bmc"
-          class="bmc-button"
-          href="https://paypal.me/fran6jy"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <svg class="bmc-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
-            <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
-            <line x1="6" y1="2" x2="6" y2="4" />
-            <line x1="10" y1="2" x2="10" y2="4" />
-            <line x1="14" y1="2" x2="14" y2="4" />
-          </svg>
-          Buy me a coffee
-        </a>
-        <p class="footer-note">
-          Chronael is free and open source. If it helped you learn, a coffee keeps it going.
-        </p>
-      </footer>
+    <!-- Result moment -->
+    <div id="result" class="modal" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="result-title">
+        <div id="confetti" class="confetti" aria-hidden="true"></div>
+        <p class="eyebrow" id="result-kicker">Game over</p>
+        <h2 id="result-title" class="result-title">You won!</h2>
+        <p id="result-sub" class="result-sub"></p>
+        <div class="modal-actions">
+          <button id="result-primary" type="button" class="btn btn-primary btn-lg">Play again</button>
+          <button id="result-share" type="button" class="btn">Share</button>
+          <button id="result-home" type="button" class="btn btn-quiet">Home</button>
+        </div>
+      </div>
     </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <footer class="site-footer">
+      <a id="bmc" class="bmc-button" href="https://paypal.me/fran6jy" target="_blank" rel="noopener noreferrer">
+        <svg class="bmc-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
+          <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
+          <line x1="6" y1="2" x2="6" y2="4" /><line x1="10" y1="2" x2="10" y2="4" /><line x1="14" y1="2" x2="14" y2="4" />
+        </svg>
+        Buy me a coffee
+      </a>
+      <p class="footer-note">Chronael is free and open source. If it helped you learn, a coffee keeps it going.</p>
+    </footer>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

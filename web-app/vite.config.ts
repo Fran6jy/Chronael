@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import { requestCoach, type CoachFacts } from "./api/coach";
 
@@ -38,11 +39,32 @@ function coachProxy(env: Record<string, string>): Plugin {
   };
 }
 
+// Writes /version.json with the build id. The page polls it and offers a reload when a
+// newer deploy is live (see src/pwa.ts).
+function versionFile(build: string): Plugin {
+  return {
+    name: "chronael-version",
+    generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: "version.json",
+        source: JSON.stringify({ build, builtAt: new Date().toISOString() }),
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), ""); // "" => load all vars, incl. secrets
+  const build = (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 12) || `local-${Date.now().toString(36)}`;
   return {
     base: "./",
     build: { target: "es2021" },
-    plugins: [coachProxy(env)],
+    define: { __BUILD_ID__: JSON.stringify(build) },
+    plugins: [coachProxy(env), versionFile(build)],
+    test: {
+      include: ["tests/unit/**/*.test.ts"],
+      environment: "node",
+    },
   };
 });

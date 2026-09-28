@@ -17,6 +17,7 @@ export interface CoachFacts {
   bestPlain?: string; // a better move, in words
   threatPlain?: string; // what the opponent can do now, in words
   followup?: boolean; // true = learner asked "why?"; reply with one extra lesson sentence
+  hint?: boolean; // true = explain WHY the suggested move is good
 }
 
 const PIECE_NAMES: Record<string, string> = {
@@ -110,4 +111,35 @@ export async function explain(facts: CoachFacts): Promise<string | null> {
 /** Follow-up when the learner taps "Tell me more": one extra plain-English lesson. */
 export function explainMore(facts: CoachFacts): Promise<string | null> {
   return explain({ ...facts, followup: true });
+}
+
+/** Offline "why" for a suggested move, built only from chess.js facts. */
+export function hintFallback(fen: string, uci: string, threatUci?: string): string {
+  const what = describeMove(fen, uci);
+  const lead = `${what[0].toUpperCase()}${what.slice(1)}.`;
+  if (what.includes("checkmate")) return `${lead} That ends the game — well spotted!`;
+  if (what.includes("captures")) return `${lead} It wins material for free or on good terms.`;
+  if (what.startsWith("castle")) return `${lead} Your king gets safe and a rook joins the game.`;
+  if (threatUci) return `${lead} It deals with a threat: otherwise ${describeMove(flipTurn(fen), threatUci)}.`;
+  if (what.includes("check")) return `${lead} Check forces your opponent to react to you.`;
+  return `${lead} It improves your position and keeps your pieces safe.`;
+}
+
+/** The same position with the other side to move (a "pass"), for spotting threats. */
+export function flipTurn(fen: string): string {
+  const parts = fen.split(" ");
+  parts[1] = parts[1] === "w" ? "b" : "w";
+  parts[3] = "-";
+  return parts.join(" ");
+}
+
+/** Ask the coach WHY the suggested move is good. Falls back to the offline sentence. */
+export async function explainHint(fen: string, uci: string, threatUci?: string): Promise<string> {
+  const facts: CoachFacts = {
+    movedPlain: describeMove(fen, uci),
+    classification: "great",
+    hint: true,
+    threatPlain: threatUci ? describeMove(flipTurn(fen), threatUci) : undefined,
+  };
+  return (await explain(facts)) ?? hintFallback(fen, uci, threatUci);
 }

@@ -1,26 +1,68 @@
 /// <reference types="@cloudflare/workers-types" />
 //
-// Cloudflare Worker + Durable Object realtime chess server (replaces PartyKit, whose
-// shared free hosting is at capacity). One Durable Object instance = one game room,
-// keyed by the room id in the URL (/room/<id>). The DO is AUTHORITATIVE: the first two
-// players to connect get White and Black, and every move is validated server-side with
-// chess.js, so illegal or out-of-turn moves are impossible. State is broadcast to both
-// browsers after each change, so they stay in sync wherever they are.
+// Chronael realtime server: a Cloudflare Worker + two Durable Objects.
+//
+// ChessRoom (one per /room/<id>) is AUTHORITATIVE for a game between two people:
+//  - Seats are bound to a secret per-device token. Only its SHA-256 hash is kept, so a
+//    refresh or reconnect always gets the same colour back, and a stolen room link
+//    alone can't take over someone's seat.
+//  - Every move is validated with chess.js; illegal and out-of-turn moves are ignored.
+//  - Resign, draw offers (with a cooldown after a decline), rematch votes (colours swap),
+//    presence, and claiming the win when the opponent has been gone for a minute.
+//  - State is persisted to Durable Object storage, so a game survives restarts and
+//    long gaps (both players can close their tabs and come back later).
+//
+// RateLimiter (one per bucket+ip) is a globally-consistent sliding-window counter used
+// by the Vercel coach proxy via POST /ratelimit (protected by a shared secret).
 
 import { Chess } from "chess.js";
 
 export interface Env {
   CHESS_ROOM: DurableObjectNamespace;
+  RATE_LIMITER: DurableObjectNamespace;
+  RL_SECRET?: string;
+}
+
+type Seat = "white" | "black";
+type Role = Seat | "spectator";
+type Status = "waiting" | "active" | "checkmate" | "stalemate" | "draw" | "resigned" | "agreed" | "abandoned";
+
+const ABANDON_MS = 60_000; // opponent must be gone this long before you can claim the win
+const DRAW_GAP_PLIES = 6; // after a declined offer, wait this many plies before offering again
+const MAX_MSGS_PER_10S = 40;
+
+async function sha256(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function cleanName(raw: string | null): string {
+  const s = (raw ?? "").replace(/[^\p{L}\p{N} ._'-]/gu, "").trim().slice(0, 20);
+  return s;
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const parts = url.pathname.split("/").filter(Boolean);
-    if (parts[0] === "room" && parts[1]) {
-      const stub = env.CHESS_ROOM.get(env.CHESS_ROOM.idFromName(parts[1]));
+
+    if (parts[0] === "room" && parts[1] && /^[a-z0-9-]{3,40}$/i.test(parts[1])) {
+      const stub = env.CHESS_ROOM.get(env.CHESS_ROOM.idFromName(parts[1].toLowerCase()));
       return stub.fetch(request);
     }
+
+    if (parts[0] === "ratelimit" && request.method === "POST") {
+      if (!env.RL_SECRET || request.headers.get("x-rl-secret") !== env.RL_SECRET) {
+        return new Response("forbidden", { status: 403 });
+      }
+      const body = (await request.json().catch(() => ({}))) as { key?: string; limit?: number; windowMs?: number };
+      if (!body.key || typeof body.key !== "string" || body.key.length > 120) {
+        return new Response("bad request", { status: 400 });
+      }
+      const stub = env.RATE_LIMITER.get(env.RATE_LIMITER.idFromName(body.key));
+      return stub.fetch("https://rl/check", { method: "POST", body: JSON.stringify(body) });
+    }
+
     return new Response("Chronael chess server is running.", {
       status: 200,
       headers: { "content-type": "text/plain" },
@@ -28,48 +70,147 @@ export default {
   },
 };
 
+interface SeatInfo {
+  hash: string;
+  name: string;
+  lastSeen: number;
+}
+
+interface Snapshot {
+  moves: string[];
+  seats: Partial<Record<Seat, SeatInfo>>;
+  status: Status;
+  winner: Seat | null;
+  drawOffer: Seat | null;
+  drawBlockedUntil: Partial<Record<Seat, number>>;
+  rematch: Partial<Record<Seat, boolean>>;
+  game: number;
+}
+
+interface Conn {
+  role: Role;
+  hash: string;
+  msgTimes: number[];
+}
+
 export class ChessRoom {
   private chess = new Chess();
-  private sessions = new Map<WebSocket, string>();
-  private white?: string;
-  private black?: string;
-  private counter = 0;
+  private conns = new Map<WebSocket, Conn>();
+  private snap: Snapshot = {
+    moves: [],
+    seats: {},
+    status: "waiting",
+    winner: null,
+    drawOffer: null,
+    drawBlockedUntil: {},
+    rematch: {},
+    game: 1,
+  };
+  private lastMove: [string, string] | null = null;
 
-  constructor(_state: DurableObjectState, _env: Env) {}
+  constructor(private state: DurableObjectState, _env: Env) {
+    this.state.blockConcurrencyWhile(async () => {
+      const saved = await this.state.storage.get<Snapshot>("room");
+      if (saved) {
+        this.snap = { ...this.snap, ...saved };
+        for (const san of this.snap.moves) this.chess.move(san);
+        const hist = this.chess.history({ verbose: true });
+        const last = hist[hist.length - 1];
+        this.lastMove = last ? [last.from, last.to] : null;
+      }
+    });
+  }
+
+  private async save(): Promise<void> {
+    await this.state.storage.put("room", this.snap);
+  }
 
   async fetch(request: Request): Promise<Response> {
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("Expected a WebSocket connection.", { status: 426 });
     }
+    const url = new URL(request.url);
+    const token = url.searchParams.get("token") || crypto.randomUUID();
+    const hash = await sha256(token);
+    const name = cleanName(url.searchParams.get("name"));
 
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
     server.accept();
 
-    const connId = "c" + ++this.counter;
-    this.sessions.set(server, connId);
-
-    let color: "white" | "black" | "spectator" = "spectator";
-    if (!this.white) {
-      this.white = connId;
-      color = "white";
-    } else if (!this.black) {
-      this.black = connId;
-      color = "black";
+    // Reclaim an existing seat by token, else take a free seat, else spectate.
+    let role: Role = "spectator";
+    for (const seat of ["white", "black"] as Seat[]) {
+      if (this.snap.seats[seat]?.hash === hash) role = seat;
+    }
+    if (role === "spectator") {
+      for (const seat of ["white", "black"] as Seat[]) {
+        if (!this.snap.seats[seat]) {
+          this.snap.seats[seat] = { hash, name, lastSeen: Date.now() };
+          role = seat;
+          break;
+        }
+      }
+    }
+    if (role !== "spectator") {
+      const info = this.snap.seats[role]!;
+      info.lastSeen = Date.now();
+      if (name) info.name = name;
+      if (this.snap.status === "waiting" && this.snap.seats.white && this.snap.seats.black) {
+        this.snap.status = "active";
+      }
     }
 
-    server.send(JSON.stringify({ type: "init", color, ...this.stateObj() }));
+    this.conns.set(server, { role, hash, msgTimes: [] });
+    await this.save();
+
+    server.send(JSON.stringify({ type: "init", color: role, ...this.stateObj() }));
     this.broadcast();
 
-    server.addEventListener("message", (evt) => this.onMessage(connId, evt.data as string));
-    server.addEventListener("close", () => this.onClose(server, connId));
-    server.addEventListener("error", () => this.onClose(server, connId));
+    server.addEventListener("message", (evt) => void this.onMessage(server, evt.data as string));
+    server.addEventListener("close", () => this.onClose(server));
+    server.addEventListener("error", () => this.onClose(server));
 
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  private onMessage(connId: string, data: string): void {
+  private online(seat: Seat): boolean {
+    for (const c of this.conns.values()) if (c.role === seat) return true;
+    return false;
+  }
+
+  private other(seat: Seat): Seat {
+    return seat === "white" ? "black" : "white";
+  }
+
+  private finishIfOver(): void {
+    if (!this.chess.isGameOver()) return;
+    if (this.chess.isCheckmate()) {
+      this.snap.status = "checkmate";
+      this.snap.winner = this.chess.turn() === "w" ? "black" : "white";
+    } else if (this.chess.isStalemate()) {
+      this.snap.status = "stalemate";
+    } else {
+      this.snap.status = "draw";
+    }
+    this.snap.drawOffer = null;
+  }
+
+  private isOver(): boolean {
+    return !["waiting", "active"].includes(this.snap.status);
+  }
+
+  private async onMessage(ws: WebSocket, data: string): Promise<void> {
+    const conn = this.conns.get(ws);
+    if (!conn) return;
+
+    // Per-socket flood guard.
+    const now = Date.now();
+    conn.msgTimes = conn.msgTimes.filter((t) => now - t < 10_000);
+    conn.msgTimes.push(now);
+    if (conn.msgTimes.length > MAX_MSGS_PER_10S) return;
+
     let msg: { type?: string; from?: string; to?: string; promotion?: string };
     try {
       msg = JSON.parse(data);
@@ -77,91 +218,199 @@ export class ChessRoom {
       return;
     }
 
-    if (msg.type === "move" && msg.from && msg.to) {
-      const color = connId === this.white ? "white" : connId === this.black ? "black" : "spectator";
-      const turn = this.chess.turn() === "w" ? "white" : "black";
-      if (color !== turn) return; // spectators and out-of-turn moves ignored
-      try {
-        const m = this.chess.move({ from: msg.from, to: msg.to, promotion: msg.promotion || undefined });
-        if (m) this.broadcast([m.from, m.to]);
-      } catch {
-        // illegal move: ignore
+    if (msg.type === "ping") {
+      ws.send(JSON.stringify({ type: "pong" }));
+      return;
+    }
+    if (conn.role === "spectator") return;
+    const seat = conn.role;
+    this.snap.seats[seat]!.lastSeen = now;
+    let changed = false;
+
+    switch (msg.type) {
+      case "move": {
+        if (this.snap.status !== "active") return;
+        const turn: Seat = this.chess.turn() === "w" ? "white" : "black";
+        if (seat !== turn || typeof msg.from !== "string" || typeof msg.to !== "string") return;
+        const promo = ["q", "r", "b", "n"].includes(msg.promotion ?? "") ? msg.promotion : undefined;
+        try {
+          const m = this.chess.move({ from: msg.from, to: msg.to, promotion: promo });
+          if (!m) return;
+          this.snap.moves.push(m.san);
+          this.lastMove = [m.from, m.to];
+          if (this.snap.drawOffer && this.snap.drawOffer !== seat) this.snap.drawOffer = null; // moving declines
+          this.finishIfOver();
+          changed = true;
+        } catch {
+          return; // illegal
+        }
+        break;
       }
-    } else if (msg.type === "reset") {
-      if (connId === this.white || connId === this.black) {
-        this.chess.reset();
-        this.broadcast();
+      case "resign": {
+        if (this.snap.status !== "active") return;
+        this.snap.status = "resigned";
+        this.snap.winner = this.other(seat);
+        this.snap.drawOffer = null;
+        changed = true;
+        break;
       }
+      case "offer_draw": {
+        if (this.snap.status !== "active" || this.snap.drawOffer) return;
+        if ((this.snap.drawBlockedUntil[seat] ?? 0) > this.snap.moves.length) return;
+        this.snap.drawOffer = seat;
+        changed = true;
+        break;
+      }
+      case "accept_draw": {
+        if (this.snap.status !== "active" || this.snap.drawOffer !== this.other(seat)) return;
+        this.snap.status = "agreed";
+        this.snap.winner = null;
+        this.snap.drawOffer = null;
+        changed = true;
+        break;
+      }
+      case "decline_draw": {
+        const offerer = this.snap.drawOffer;
+        if (!offerer || offerer === seat) return;
+        this.snap.drawOffer = null;
+        this.snap.drawBlockedUntil[offerer] = this.snap.moves.length + DRAW_GAP_PLIES;
+        changed = true;
+        break;
+      }
+      case "claim_win": {
+        if (this.snap.status !== "active") return;
+        const opp = this.other(seat);
+        const oppInfo = this.snap.seats[opp];
+        if (!oppInfo || this.online(opp) || now - oppInfo.lastSeen < ABANDON_MS) return;
+        this.snap.status = "abandoned";
+        this.snap.winner = seat;
+        changed = true;
+        break;
+      }
+      case "rematch": {
+        if (!this.isOver()) return;
+        this.snap.rematch[seat] = true;
+        if (this.snap.rematch.white && this.snap.rematch.black) {
+          // New game, colours swapped.
+          const { white, black } = this.snap.seats;
+          this.snap.seats = { white: black, black: white };
+          for (const c of this.conns.values()) {
+            if (c.role !== "spectator") c.role = this.other(c.role);
+          }
+          this.chess.reset();
+          this.lastMove = null;
+          this.snap = {
+            ...this.snap,
+            moves: [],
+            status: "active",
+            winner: null,
+            drawOffer: null,
+            drawBlockedUntil: {},
+            rematch: {},
+            game: this.snap.game + 1,
+          };
+          // Tell each socket its (new) colour.
+          for (const [sock, c] of this.conns) {
+            try {
+              sock.send(JSON.stringify({ type: "init", color: c.role, ...this.stateObj() }));
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+        changed = true;
+        break;
+      }
+      default:
+        return;
+    }
+
+    if (changed) {
+      await this.save();
+      this.broadcast();
     }
   }
 
-  private onClose(ws: WebSocket, connId: string): void {
-    if (!this.sessions.has(ws)) return;
-    this.sessions.delete(ws);
-    if (connId === this.white) this.white = undefined;
-    else if (connId === this.black) this.black = undefined;
-
-    // A reconnect can arrive before Cloudflare delivers the old socket's close
-    // event. In that window the new socket is initially a spectator. Promote the
-    // oldest waiting spectator as soon as a seat opens instead of leaving that
-    // device stuck as a spectator for the rest of the game.
-    this.promoteSpectators();
+  private onClose(ws: WebSocket): void {
+    const conn = this.conns.get(ws);
+    if (!conn) return;
+    this.conns.delete(ws);
+    if (conn.role !== "spectator") {
+      // Seat stays reserved for this token; just note when they were last here.
+      this.snap.seats[conn.role]!.lastSeen = Date.now();
+      void this.save();
+    }
     this.broadcast();
   }
 
-  private promoteSpectators(): void {
-    for (const [ws, connId] of this.sessions) {
-      if (connId === this.white || connId === this.black) continue;
-
-      let color: "white" | "black" | undefined;
-      if (!this.white) {
-        this.white = connId;
-        color = "white";
-      } else if (!this.black) {
-        this.black = connId;
-        color = "black";
-      }
-
-      if (color) {
-        try {
-          ws.send(JSON.stringify({ type: "init", color, ...this.stateObj() }));
-        } catch {
-          this.sessions.delete(ws);
-          if (connId === this.white) this.white = undefined;
-          if (connId === this.black) this.black = undefined;
-        }
-      }
-
-      if (this.white && this.black) return;
-    }
+  private result(): string | null {
+    if (!this.isOver()) return null;
+    if (this.snap.winner === "white") return "1-0";
+    if (this.snap.winner === "black") return "0-1";
+    return "1/2-1/2";
   }
 
-  private result(): string {
-    if (this.chess.isCheckmate()) return this.chess.turn() === "w" ? "0-1" : "1-0";
-    if (this.chess.isStalemate() || this.chess.isDraw()) return "1/2-1/2";
-    return "*";
-  }
-
-  private stateObj(lastMove?: [string, string]) {
+  private stateObj() {
+    const now = Date.now();
+    const seatView = (seat: Seat) => {
+      const info = this.snap.seats[seat];
+      const online = this.online(seat);
+      return {
+        claimed: !!info,
+        online,
+        name: info?.name || "",
+        awayMs: info && !online ? now - info.lastSeen : 0,
+      };
+    };
+    let spectators = 0;
+    for (const c of this.conns.values()) if (c.role === "spectator") spectators++;
     return {
       fen: this.chess.fen(),
+      moves: this.snap.moves,
       turn: this.chess.turn() === "w" ? "white" : "black",
-      lastMove: lastMove ?? null,
-      whitePresent: !!this.white,
-      blackPresent: !!this.black,
-      over: this.chess.isGameOver(),
-      result: this.chess.isGameOver() ? this.result() : null,
+      lastMove: this.lastMove,
+      whitePresent: !!this.snap.seats.white,
+      blackPresent: !!this.snap.seats.black,
+      players: { white: seatView("white"), black: seatView("black") },
+      status: this.snap.status,
+      winner: this.snap.winner,
+      over: this.isOver(),
+      result: this.result(),
+      drawOffer: this.snap.drawOffer,
+      drawBlockedUntil: this.snap.drawBlockedUntil,
+      rematch: this.snap.rematch,
+      spectators,
+      game: this.snap.game,
+      abandonMs: ABANDON_MS,
     };
   }
 
-  private broadcast(lastMove?: [string, string]): void {
-    const msg = JSON.stringify({ type: "state", ...this.stateObj(lastMove) });
-    for (const ws of this.sessions.keys()) {
+  private broadcast(): void {
+    const msg = JSON.stringify({ type: "state", ...this.stateObj() });
+    for (const ws of this.conns.keys()) {
       try {
         ws.send(msg);
       } catch {
-        // dead socket; will be cleaned up on close
+        // dead socket; cleaned up on close
       }
     }
+  }
+}
+
+// A sliding-window counter. One instance per key, so the count is exact worldwide.
+export class RateLimiter {
+  private hits: number[] = [];
+
+  constructor(_state: DurableObjectState, _env: Env) {}
+
+  async fetch(request: Request): Promise<Response> {
+    const body = (await request.json().catch(() => ({}))) as { limit?: number; windowMs?: number };
+    const limit = Math.min(Math.max(body.limit ?? 20, 1), 1000);
+    const windowMs = Math.min(Math.max(body.windowMs ?? 60_000, 1000), 3_600_000);
+    const now = Date.now();
+    this.hits = this.hits.filter((t) => now - t < windowMs);
+    const allowed = this.hits.length < limit;
+    if (allowed) this.hits.push(now);
+    return Response.json({ allowed, remaining: Math.max(0, limit - this.hits.length) });
   }
 }

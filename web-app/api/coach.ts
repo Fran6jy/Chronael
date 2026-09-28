@@ -15,6 +15,7 @@ export interface CoachFacts {
   bestPlain?: string; // plain-English description of a stronger move
   threatPlain?: string; // plain-English description of the opponent's strong reply
   followup?: boolean; // learner tapped "Tell me more" — give one extra lesson sentence
+  hint?: boolean; // learner asked for a hint — explain WHY the suggested move is good
 }
 
 export interface CoachEnv {
@@ -38,6 +39,15 @@ const SYSTEM = [
 ].join(" ");
 
 function buildUserMessage(f: CoachFacts): string {
+  if (f.hint) {
+    const hintLines = [`The coach suggests I ${f.movedPlain}.`];
+    if (f.threatPlain) hintLines.push(`If I don't, my opponent could: ${f.threatPlain}.`);
+    hintLines.push(
+      "Explain in 1-2 short, friendly sentences WHY this is a good idea for a beginner " +
+        "(what it gains, protects, or threatens). No chess notation, no numbers.",
+    );
+    return hintLines.join("\n");
+  }
   const lines = [
     `What I just did: ${f.movedPlain}.`,
     `Overall that move was a: ${f.classification}.`,
@@ -106,13 +116,32 @@ export async function requestCoach(facts: CoachFacts, env: CoachEnv): Promise<Co
   return { status: 502, body: { error: lastError } };
 }
 
-// Best-effort per-IP rate limit. This endpoint is an unauthenticated proxy to the
-// OpenRouter key, so a bare minimum is worth having to protect the free-tier quota.
-// It is in-memory per warm instance (not a shared store), so it caps a single client
-// hammering one instance; for hard guarantees use Vercel KV / Upstash instead.
+// Per-IP rate limit. This endpoint is an unauthenticated proxy to the OpenRouter key.
+// Primary: the global RateLimiter Durable Object on the game Worker (exact across every
+// Vercel instance and region). Fallback: an in-memory window per warm instance, used if
+// the Worker is unreachable or not configured, so the coach never hard-fails on it.
 const WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = 20;
 const hits = new Map<string, number[]>();
+
+async function globalRateLimited(ip: string): Promise<boolean | null> {
+  const host = process.env.GAME_HOST || process.env.VITE_GAME_HOST;
+  const secret = process.env.RL_SECRET;
+  if (!host || !secret) return null;
+  try {
+    const resp = await fetch(`https://${host}/ratelimit`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-rl-secret": secret },
+      body: JSON.stringify({ key: `coach:${ip}`, limit: MAX_PER_WINDOW, windowMs: WINDOW_MS }),
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!resp.ok) return null;
+    const data = (await resp.json()) as { allowed?: boolean };
+    return data.allowed === false;
+  } catch {
+    return null;
+  }
+}
 
 function rateLimited(ip: string): boolean {
   const now = Date.now();
@@ -135,6 +164,7 @@ function isValidFacts(f: unknown): f is CoachFacts {
   if (typeof o.classification !== "string" || !RATINGS.has(o.classification)) return false;
   if (!strOk(o.bestPlain, 300) || !strOk(o.threatPlain, 300)) return false;
   if (o.followup !== undefined && typeof o.followup !== "boolean") return false;
+  if (o.hint !== undefined && typeof o.hint !== "boolean") return false;
   return true;
 }
 
@@ -156,7 +186,8 @@ export default async function handler(
 
   const fwd = req.headers?.["x-forwarded-for"];
   const ip = (Array.isArray(fwd) ? fwd[0] : fwd ?? "unknown").toString().split(",")[0].trim();
-  if (rateLimited(ip)) {
+  const globalVerdict = await globalRateLimited(ip);
+  if (globalVerdict === true || (globalVerdict === null && rateLimited(ip))) {
     res.status(429).json({ error: "rate_limited" });
     return;
   }

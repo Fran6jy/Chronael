@@ -14,3 +14,9 @@ dist/
 
 # Wrangler local dev artifacts
 .wrangler/
+.dev.vars
+
+# Test-only build flag (not a secret)
+!.env.e2e
+test-results/
+playwright-report/

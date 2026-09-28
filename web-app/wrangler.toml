@@ -2,12 +2,23 @@ name = "chronael-chess"
 main = "worker/chess.ts"
 compatibility_date = "2025-01-01"
 
-# One Durable Object per game room. Declared as a SQLite-backed class so it runs on
-# the Cloudflare free plan (the DO itself keeps game state in memory; no storage used).
+# One Durable Object per game room, plus one per rate-limit key. Both are SQLite-backed
+# classes so they run on the Cloudflare free plan.
 [[durable_objects.bindings]]
 name = "CHESS_ROOM"
 class_name = "ChessRoom"
 
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["ChessRoom"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RateLimiter"]
+
+# Secrets (set with `npx wrangler secret put <NAME>`):
+#   RL_SECRET  shared with the Vercel coach proxy so only it can use /ratelimit
