@@ -164,6 +164,18 @@ Then set **`VITE_GAME_HOST`** = that host (e.g. `chronael-chess.<you>.workers.de
 in your Vercel project's Environment Variables and redeploy. Until it's set, the
 "Play a friend" button stays disabled (the rest of the app is unaffected).
 
+Current production deployment:
+
+- Web app: `https://chronael.vercel.app`
+- Game Worker: `https://chronael-chess.fran6jy.workers.dev`
+- Vercel project: `web-app` (do not confuse it with the older `chronael` project)
+- Production variable: `VITE_GAME_HOST=chronael-chess.fran6jy.workers.dev`
+
+The Worker assigns the first two connections white and black. Extra connections are
+spectators. If a player reconnects before their stale socket closes, the reconnect is
+temporarily a spectator and is automatically promoted when the seat becomes free.
+When troubleshooting an old room, close it on both devices and create a fresh invite.
+
 ## How the difficulty works
 
 `src/engine.ts` maps each UI level to a Stockfish **Skill Level**, a per-move

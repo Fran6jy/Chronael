@@ -96,10 +96,44 @@ export class ChessRoom {
   }
 
   private onClose(ws: WebSocket, connId: string): void {
+    if (!this.sessions.has(ws)) return;
     this.sessions.delete(ws);
     if (connId === this.white) this.white = undefined;
     else if (connId === this.black) this.black = undefined;
+
+    // A reconnect can arrive before Cloudflare delivers the old socket's close
+    // event. In that window the new socket is initially a spectator. Promote the
+    // oldest waiting spectator as soon as a seat opens instead of leaving that
+    // device stuck as a spectator for the rest of the game.
+    this.promoteSpectators();
     this.broadcast();
+  }
+
+  private promoteSpectators(): void {
+    for (const [ws, connId] of this.sessions) {
+      if (connId === this.white || connId === this.black) continue;
+
+      let color: "white" | "black" | undefined;
+      if (!this.white) {
+        this.white = connId;
+        color = "white";
+      } else if (!this.black) {
+        this.black = connId;
+        color = "black";
+      }
+
+      if (color) {
+        try {
+          ws.send(JSON.stringify({ type: "init", color, ...this.stateObj() }));
+        } catch {
+          this.sessions.delete(ws);
+          if (connId === this.white) this.white = undefined;
+          if (connId === this.black) this.black = undefined;
+        }
+      }
+
+      if (this.white && this.black) return;
+    }
   }
 
   private result(): string {

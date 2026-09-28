@@ -637,7 +637,7 @@ function init(): void {
   });
   el<HTMLButtonElement>("tut-exit").addEventListener("click", () => tutorial.exit());
 
-  // Online: play a friend. Disabled until a PartyKit host is configured.
+  // Online: play a friend. Disabled until a Cloudflare Worker host is configured.
   const playFriendBtn = el<HTMLButtonElement>("play-friend");
   if (!gameConfigured()) {
     playFriendBtn.disabled = true;
