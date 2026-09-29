@@ -17,18 +17,22 @@ real move on held-out games.
 
 ## 🎓 Play now: the beginner learning app
 
-The primary, beginner-facing experience lives in [`web-app/`](web-app/) — a
-browser app that teaches chess to someone who has **never played before**: legal-move
-dots, take-backs, hints, and an adaptive opponent gentle enough to beat. It runs fully
-in the browser (Chessground + chess.js + Stockfish WASM), no server required.
+The main thing people use is the web app in [`web-app/`](web-app/), live at
+**https://chronael.vercel.app**. It teaches chess to someone who has never played:
+- a coach that explains every move in plain English;
+- lessons that fade out the move dots piece by piece;
+- puzzles, and a game review after each game;
+- games against friends or anyone online.
+
+See [`web-app/README.md`](web-app/README.md) for features and
+[`HANDOFF.md`](HANDOFF.md) for how it's hosted and deployed.
 
 ```bash
-cd web-app && npm install && npm run dev   # http://localhost:5173
+cd web-app && npm ci && npm run dev   # http://localhost:5173
 ```
 
-The Carlsen imitation model described below is the **"graduate" opponent** you can
-switch to once you've learned the ropes (live in the app, running in your browser via
-ONNX). It is not what a beginner faces first.
+The Carlsen imitation model described below is the app's **Magnus bot**, one of the
+opponents you can choose next to "Play now". It runs in the browser via ONNX.
 
 ## How it works
 

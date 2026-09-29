@@ -178,8 +178,3 @@ export function setLessonStars(id: string, stars: number): void {
   p.lessons[id] = Math.max(p.lessons[id] ?? 0, stars);
   save();
 }
-
-/** For tests. */
-export function resetProgressCache(): void {
-  state = null;
-}

@@ -16,6 +16,12 @@ Read `HANDOFF.md` first: production URLs, architecture, deploy and verification.
   The Vitest golden test enforces this.
 - **Online server.** `web-app/worker/chess.ts` is authoritative. Validate on the
   server; the client only sends intentions.
+- **Fair play.** Games against people (friend or Quick match, and the Quick-match
+  computer fallback) have no coach, hints, take-backs or move dots. Keep it that way.
+- **Learning to play without dots.** Dots fade per piece (`src/mastery.ts`). Never add a
+  global "always show dots" switch; illegal tries must be explained (`src/rules.ts`).
+- **Phones.** Nothing may scroll sideways at 360 px, pieces must stay inside the board,
+  and game controls must be reachable without scrolling. e2e tests check all of this.
 - **Design system.** Use the tokens in `web-app/src/style.css`: Playfair Display for
   headings, DM Sans for text, paper/cream/green/gold. Respect reduced motion, keep tap
   targets at least 44 px, and avoid horizontal scroll at 375 px.
@@ -27,4 +33,5 @@ cd web-app
 npm run build
 npm test
 npm run test:e2e
+# if you touched the lobby or rooms: npx wrangler dev, then node scripts/check_lobby.mjs
 ```

@@ -1,41 +1,28 @@
-﻿
+# Python
 __pycache__/
-
 *.py[cod]
-
 venv/
-
 env/
 
+# Model training artefacts (the shipped browser model is re-included in web-app/.gitignore)
 models/
-
 *.bin
-
 *.safetensors
-
+*.pt
+*.onnx
 data/raw/*.pgn
-
 data/processed/*.json
-
 data/processed/*.npz
 
-*.pt
-
-*.onnx
-
+# Tooling
 node_modules/
-
 web-app/build/
-
 .vscode/
-
+.claude/
 .DS_Store
-
 *.log
-
 logs/
 
+# Secrets
 .env
-
 .vercel/
-

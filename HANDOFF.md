@@ -35,8 +35,20 @@ browser (Vite + TS)
   ├─ Magnus net, ONNX int8 (public/models, lazy-loaded) → "Magnus bot"
   ├─ /api/coach  ──► OpenRouter free model (phrasing only; facts come from Stockfish)
   │                   └─► Worker /ratelimit (global limit, 20/min per IP)
-  └─ WebSocket   ──► Worker /room/<id> ─► ChessRoom Durable Object (one per game)
+  ├─ WebSocket   ──► Worker /room/<id> ─► ChessRoom Durable Object (one per game)
+  └─ WebSocket   ──► Worker /lobby     ─► Lobby Durable Object (Quick match, "N online")
 ```
+
+- **Home page.** The first screen has the headline, **Play now** and **I've never played**, and
+  an **Opponent** picker (Coach bot levels 1–8 or Magnus bot; Play now becomes "Play
+  Magnus"). It also offers Play as, *Play a person: Quick match · Invite a friend*, and a
+  live demo board where the coach explains moves. Returning players get a "Continue:"
+  strip. A name is asked only the first time someone plays a person. About is a separate
+  page (`#about`).
+- **Phones.** The coach and the Take back / Hint / New game / Resign buttons are pinned to
+  the bottom during games, puzzles, tutorials and drills. The board sizes itself to the
+  screen height so everything fits without scrolling. e2e tests guard against sideways
+  overflow and clipped pieces.
 
 - **Coach.** Stockfish decides everything. `describeMove()` turns moves into plain English
   (no notation). The model only rephrases those facts. Every path has an offline
@@ -54,8 +66,12 @@ browser (Vite + TS)
     that fires even if nobody is connected. Running out loses the game (`status:
     "timeout"`). The client shows a countdown that turns red in the last 20 s.
   - **Abandonment.** When a player has been away 60 s, the opponent may claim the win.
-  - **Waiting.** After 20 s of waiting, the inviter is offered the bot while the link
-    keeps working.
+  - **Fair play.** No coach, hints, take-backs or dots in games against people.
+  - **Waiting for a friend.** After 20 s, "Play the computer instead" opens the same
+    explicit choice as Quick match, and the invite link keeps working.
+- **Learn the pieces** (`src/tutorial.ts`). Each piece is learned first with dots, then
+  tested without them: reach the circled square in N moves. A unit test proves each
+  target needs exactly N moves.
 - **Move dots fade out** (`src/mastery.ts`, `src/rules.ts`). The goal is that learners
   can play on a real board.
   - **Mastery.** A piece is mastered once its no-dots tutorial test is passed, after a
@@ -72,8 +88,9 @@ browser (Vite + TS)
   - **Presence.** Every open page is counted per device, which drives "N online".
   - **Pairing.** Two searchers are paired at once.
   - **Background players.** After an empty search (20 s, paused while an offer is
-    pending), the player explicitly picks Coach bot (with a level) or Magnus, plays by
-    real-game rules, and stays matchable. A new searcher is offered to them with a
+    pending), the player explicitly picks Coach bot (with a level) or Magnus and a colour.
+    They then play a "real game" (no coach, hints, take-backs, eval bar or dots; the review
+    is still available afterwards) and stay matchable. A new searcher is offered to them with a
     15 s Join/Stay banner. Stay or no answer releases the searcher back to searching,
     and the next background player is asked.
   - **Leaving.** Closing a socket leaves every queue and cancels its offers.
@@ -127,11 +144,17 @@ Kill every `workerd.exe` and start again.
 
 ```powershell
 cd web-app
-npm test            # Vitest: encoding vs Python golden, coach wording, streak maths, puzzle legality
-npm run test:e2e    # Playwright vs a production build (desktop + mobile): tutorial, game, promotion, puzzle, PWA
+npm test                     # Vitest (73): encoding vs Python golden, coach wording, rules explainer,
+                             #   dot mastery, streak and rating maths, puzzle and drill legality
+npm run test:e2e             # Playwright (33) vs a production build, desktop + mobile
+node scripts/check_lobby.mjs # matchmaking (9 checks), needs `wrangler dev` running
 cd ..
-pytest -q           # model/encoding tests (Python)
+pytest -q                    # model/encoding tests (Python)
 ```
+
+The e2e build (`.env.e2e`) points `VITE_GAME_HOST` at `127.0.0.1:9`, where nothing is
+listening. Online play is then "configured" but always finds nobody, which exercises
+the Quick-match fallback.
 
 CI (`.github/workflows/ci.yml`) runs the build, both web test suites, and pytest on
 every push and PR.
@@ -157,15 +180,20 @@ npx vercel env add RL_SECRET production
 
 ## Verify production
 
-1. Open https://chronael.vercel.app. The home page shows the hero, the "Start playing"
-   panel and four cards.
+1. Open https://chronael.vercel.app. The first screen shows **Play now**, the Opponent
+   picker, *Play a person* (with "N online" when others are on) and the demo board. On
+   a phone the whole demo board fits.
 2. Play the computer: move, get a rating, press **Hint + why**, resign, and see the
-   result modal.
+   result modal. Then open **Review this game**.
 3. Open the daily puzzle. Solving it shows "Solved!" and the streak goes to 1.
 4. Invite a friend on device A and open the link on device B. Moves alternate. Refresh
    B and it keeps its colour. Try a draw offer and a rematch, which swaps colours.
 5. Close B. A sees "disconnected" with a countdown and can claim the win after 60 s.
-6. `curl https://chronael.vercel.app/version.json` returns the deployed commit.
+6. Don't move for 60 s: you lose on time, and the banner turns red in the last 20 s.
+7. Quick match on one device with nobody around: choose a computer opponent. Quick
+   match on a second device: the first gets a Join/Stay banner, and Join starts a live
+   game.
+8. `curl https://chronael.vercel.app/version.json` returns the deployed commit.
 
 ## Android app
 
@@ -187,6 +215,13 @@ The Android app is a Trusted Web Activity, package `app.vercel.chronael.twa`, ve
 - **When to rebuild.** Web changes ship without a new APK. Rebuild only to change the
   name, icon or package settings, or to bump the version for Play.
 
-## Not done yet
+## Not done yet / known limits
 
-- **Clocks.** Online games are untimed. Abandonment uses the 60 s away rule instead.
+- **Progress is per device.** It lives in localStorage and there are no accounts, so
+  progress doesn't follow a player to another device.
+- **Play Store.** The AAB is built and signed but not submitted. With Play App Signing,
+  add Play's SHA-256 to `assetlinks.json`.
+- **Matchmaking needs overlap.** Quick match pairs people only while both are on the site
+  (searching, or playing the computer after an empty search).
+- **No cheat detection** beyond server-side move validation.
+- **Peek (press and hold)** isn't covered by automated tests.

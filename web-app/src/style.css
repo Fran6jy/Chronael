@@ -157,20 +157,7 @@ button { font-family: inherit; }
 }
 .hero-title em { font-style: italic; color: var(--gold); }
 .hero-sub { font-size: 1.12rem; color: var(--ink-2); max-width: 36em; margin: 0 0 18px; }
-.hero-points { display: none; } /* the paragraph above already says this */
-.hero-points li {
-  background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px;
-  font-size: 0.86rem; font-weight: 600; color: var(--green2);
-}
-.hero-points li::before { content: "✓ "; color: var(--gold); }
 
-.entry {
-  grid-area: panel; align-self: start;
-  background: var(--paper); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow-md);
-  padding: 24px; display: flex; flex-direction: column; gap: 14px;
-}
-.entry-title { font-family: var(--serif); font-size: 1.6rem; color: var(--green); margin: 0; font-weight: 600; }
-.entry-note { margin: 0; font-size: 0.83rem; color: var(--muted); text-align: center; }
 
 .rows { grid-area: rows; }
 .rows-title { font-family: var(--serif); font-size: 1.35rem; color: var(--green); margin: 0 0 12px; font-weight: 600; }
@@ -681,7 +668,6 @@ button { font-family: inherit; }
 @media (max-width: 900px) {
   .home { grid-template-columns: 1fr; grid-template-areas: "hero" "demo" "rows"; gap: 22px; padding-top: 8px; }
   .hero { padding-top: 8px; }
-  .entry { position: static; }
   .game { grid-template-columns: 1fr; justify-items: center; padding: 8px 12px 28px; }
   .game { justify-items: stretch; }
   .board-col, .side { width: 100%; max-width: 600px; justify-self: center; }
@@ -769,7 +755,7 @@ html, body { max-width: 100%; overflow-x: clip; }
 @media (max-width: 560px) {
   /* First screen on a phone: headline, one line, two buttons, then the demo. */
   .home { grid-template-areas: "hero" "demo" "rows"; grid-template-columns: minmax(0, 1fr); }
-  .sub-long, .hero-points { display: none; }
+  .sub-long { display: none; }
   .sub-short { display: inline; }
   .hero { padding-top: 0; }
   .hero .eyebrow { display: none; }
@@ -800,7 +786,6 @@ html, body { max-width: 100%; overflow-x: clip; }
   .demo-dots { margin-top: 10px; }
   .topbar { padding: 12px 14px 4px; }
   .brand { font-size: 1.35rem; }
-  .hero-points li { font-size: 0.8rem; padding: 5px 10px; }
   .hero-demo { max-width: 340px; }
   .home-card { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; padding: 16px; }
   .home-card > * { grid-column: 2; }
@@ -810,7 +795,6 @@ html, body { max-width: 100%; overflow-x: clip; }
   .home { padding: 8px 16px 32px; }
   .cards { grid-template-columns: 1fr; }
   .hero-sub { font-size: 1rem; }
-  .entry { padding: 18px; }
   .result-title { font-size: 2rem; }
 }
 

@@ -1,192 +1,91 @@
-# Chronael — Learn Chess (web app)
+# Chronael: learn chess, calmly (web app)
 
-A browser app for **complete beginners** to learn chess by playing. No login, no
-server, runs entirely in the browser.
+A chess app for people who have never played. A patient coach explains every move in plain
+English, with no notation. Live at **https://chronael.vercel.app**, also installable as an
+app and as an Android APK.
 
-**Design:** a calming "wellness" aesthetic (Soft UI Evolution, light mode) — warm
-cream + sage-green board, soft-lavender highlights, Lora + Raleway typography, gentle
-shadows, SVG icons, WCAG-AA contrast and `prefers-reduced-motion` respected.
+For how it runs in production (hosting, secrets, deploys, the Android build), see
+[`../HANDOFF.md`](../HANDOFF.md).
 
-## What it does (beginner-first)
+## What's in it
 
-- **Teaches the rules as you play** — click any piece and the squares it can legally
-  move to light up. Illegal moves simply can't be made.
-- **An opponent you can actually beat** — an adaptive [Stockfish](https://stockfishchess.org)
-  (compiled to WebAssembly, runs locally). Level 1 deliberately makes blunders so a
-  first-timer can win; the levels climb up to genuinely tough.
-- **Graduate opponent: the Magnus bot** — once you're improving, switch opponents to a
-  neural net trained on Magnus Carlsen's own games (~27% top-1 move-match). It runs
-  entirely in your browser via onnxruntime-web and plays his openings. Loaded on demand.
-- **Gentle first-run welcome** — newcomers are greeted with a calm choice:
-  "Learn the pieces" or "Play a game" (shown once, remembered per browser).
-- **"Learn the pieces" tutorial** — a gentle, interactive tour for absolute
-  first-timers: each piece appears on a calm board, pre-selected with its legal-move
-  dots and a one-paragraph explanation. Move it, see it's legal, move on.
-- **Promotion picker** — when a pawn reaches the last rank you choose Queen / Rook /
-  Bishop / Knight (no silent auto-queen), so beginners learn the rule.
-- **Promotion picker** with the real board piece art — choose Queen / Rook /
-  Bishop / Knight (no silent auto-queen).
-- **Captured-pieces tray + plain material summary** ("You're ahead by 3 points").
-- **"Tell me more"** after a mistake — one extra plain-English rule-of-thumb from the coach.
-- **Soft move/capture sounds** (synthesised, no files) with a mute toggle.
-- **Square-label toggle** (a–h, 1–8) — off by default for calm, on for learning notation.
-- **Take back** any move to experiment without fear.
-- **Hint** — a green arrow shows a strong move when you're stuck.
-- **A coach that rates and explains your moves.** Stockfish judges every move you make
-  (great / good / inaccuracy / mistake / blunder) and an **eval bar** shows who's ahead.
-  On a real mistake, a free LLM explains *why* in one friendly sentence — e.g.
-  *"That was a brave try, but your opponent can now take your queen with cxd5. Next
-  time, try Qd6 instead!"*
-- **Move list, check/checkmate detection, last-move highlights**, and beginner tips.
+**Learning**
+- **Learn the pieces.** For each piece you first learn it with the move dots shown. Then you
+  test yourself without dots, reaching a circled square in a set number of moves. Wrong
+  moves are explained, not just blocked.
+- **Lessons path.** Checkmate patterns, winning material, opening principles and endgames,
+  with 15 drills and 1–3 stars each. Every answer is checked by Stockfish.
+- **Board vision drills.** "Tap every square the knight can reach", with no dots.
+- **Move dots fade out piece by piece.** Once you've shown you know a piece, its dots switch
+  off and you drag freely, as on a real board. Illegal tries are explained. Press and hold
+  a piece to peek at its dots, but peek too often and they come back.
 
-### How the coach stays accurate
+**Playing the computer**
+- **Coach bot** at levels 1–8 (level 1 makes mistakes on purpose), or the **Magnus bot**, a
+  neural net trained on Magnus Carlsen's games that runs in the browser.
+- **Coach.** Every move is rated, from great to blunder. Mistakes are explained in plain
+  words, and "Tell me more" adds a rule of thumb. **Hint + why** shows a good move and the
+  reason for it. You can take moves back.
+- **Game review** after each game: an accuracy score, every move colour-coded, and the three
+  moments that decided it, with the better move for you to find.
+- **Your mistakes.** Your own blunders come back as puzzles, spaced out over days.
 
-LLMs are bad at chess, so the model never analyses the board. **Stockfish computes all
-the facts** (the eval swing, the best move, the refutation); the LLM only phrases those
-facts kindly. That's why even a small free model gives correct coaching.
+**Puzzles**
+- **Daily puzzle** with a streak.
+- **Rated puzzles.** 3,058 Lichess puzzles (CC0), rated 528–2500. Your puzzle rating adapts
+  as you solve them.
 
-Crucially for a beginner, **moves are translated to plain English before they ever reach
-the model**: `describeMove()` (in `src/coach.ts`) turns a move into words like "the
-bishop captures the knight" using chess.js, and the backend system prompt (in
-`api/coach.ts`) forbids any chess notation or numbers. So the learner reads "your
-opponent's pawn can take your queen" — never "cxd5". It runs in two
-tiers: an instant offline rating + tip (Tier 0), and — only for mistakes/blunders — a
-natural-language explanation from OpenRouter (Tier 1), with a fallback chain across
-several free models since free endpoints get rate-limited.
+**Playing people**
+- **Invite a friend** with a link, or **Quick match** with anyone looking right now. The
+  button shows how many people are online.
+- **Fallback.** If nobody's around after 20 s, you choose the computer explicitly and stay
+  matchable: a Join/Stay banner appears if someone searches.
+- **Fair play.** No coach, hints, take-backs or dots against a person, and one minute per
+  move. Resign, draw offers, rematch (colours swap), and your seat survives a refresh.
 
-### Setup for the coach (optional)
-
-The board, opponent, hints and move ratings work with **no key**. To enable the
-natural-language explanations:
-
-```bash
-cp .env.example .env      # then paste your free OpenRouter key into OPENROUTER_API_KEY
-```
-
-The key is read only by the dev server's `/api/coach` proxy (and a serverless function
-in production) — it is **never** bundled into the browser. Get a free key at
-<https://openrouter.ai/keys>.
-
-## Tech
-
-| Concern | Library |
-|---|---|
-| Board UI (legal-move dots, drag, highlights) | [Chessground](https://github.com/lichess-org/chessground) (Lichess's board) |
-| Rules / legality / SAN | [chess.js](https://github.com/jhlywa/chess.js) |
-| Opponent + future analysis | [stockfish.js](https://github.com/nmrugg/stockfish.js) 16, single-threaded WASM |
-
-The single-threaded Stockfish build needs no special COOP/COEP headers and runs with
-its classical evaluation (NNUE disabled), so the app loads fast and works as plain
-static files — no 40 MB neural-net download.
+**Everything else**
+- **Progress dashboard.** Puzzle rating, accuracy, blunders per game, record by opponent,
+  pieces played without dots, and what to work on next.
+- **No account.** Progress is saved on your device.
+- **Works offline** once loaded, and shows a "new version" banner after each deploy.
 
 ## Run it
 
 ```bash
-cd web-app
-npm install
-npm run dev      # http://localhost:5173 (with the coach proxy)
-npm run build    # static bundle in dist/
-npm run preview  # serve the production build locally (static only)
+npm ci
+npx wrangler dev --port 8787 --ip 127.0.0.1   # online-play server (optional)
+npm run dev                                   # http://localhost:5173
 ```
 
-## Deploy (production)
+Without `wrangler dev`, everything works except playing people. The coach explanations need
+an OpenRouter key in `.env` (see `.env.example`); without one, the coach falls back to
+built-in sentences.
 
-The board, adaptive opponent, tutorial, sounds, move ratings, eval bar and captured
-tray are **100% static** — `dist/` deploys to any static host. The only piece that
-needs a server is the coach's natural-language explanations (`POST /api/coach`), which
-must hold the OpenRouter key. If that endpoint is absent, the app **degrades
-gracefully**: you still get the instant offline move ratings/tips, just not the LLM
-sentences.
-
-### Vercel (recommended — full coach support)
-
-The repo includes `api/coach.ts` (serverless function) and `vercel.json`.
+## Test
 
 ```bash
-cd web-app
-vercel            # or: connect the repo in the Vercel dashboard, root = web-app
+npm test               # Vitest unit tests
+npm run test:e2e       # Playwright against a production build, desktop + mobile
+node scripts/check_lobby.mjs   # matchmaking checks (needs wrangler dev running)
 ```
 
-Then set environment variables in the Vercel dashboard (Project → Settings → Env):
+## Code map
 
-- `OPENROUTER_API_KEY` — your key (server-side only; never exposed to the browser)
-- `COACH_MODELS` — optional, e.g. `google/gemma-4-31b-it:free,openai/gpt-oss-120b:free`
-
-### Netlify
-
-Publish `dist/`, add a function for the coach, and redirect `/api/coach` to it:
-
-```toml
-# netlify.toml
-[build]
-  command = "npm run build"
-  publish = "dist"
-  functions = "netlify/functions"
-[[redirects]]
-  from = "/api/coach"
-  to = "/.netlify/functions/coach"
-  status = 200
-```
-
-A function at `netlify/functions/coach.ts` can simply call `requestCoach()` (exported
-from `api/coach.ts`). Set the same env vars in the Netlify dashboard.
-
-### Static-only (GitHub Pages, S3, …)
-
-`npm run build` and upload `dist/`. Everything works except the LLM coach sentences
-(the offline ratings/tips still show). `base: "./"` in `vite.config.ts` means it works
-from any sub-path.
-
-## Online play (play a friend)
-
-The **"Play a friend online"** button creates a private game, gives you a shareable
-link, and syncs moves in real time when your friend opens it — anywhere in the world.
-It's powered by a **Cloudflare Worker + Durable Object** (`worker/chess.ts`): one
-Durable Object per game room, authoritative, validating every move with chess.js, so
-illegal or out-of-turn moves are impossible even if a client is tampered with.
-
-**Local dev:** run the Worker alongside Vite:
-
-```bash
-npx wrangler dev      # serves the Worker on 127.0.0.1:8787 (client defaults to this in dev)
-npm run dev           # in another terminal
-```
-
-**Deploy (one time):** free Cloudflare account, then
-
-```bash
-cd web-app
-npx wrangler login    # opens the browser to authorize
-npx wrangler deploy   # deploys to chronael-chess.<you>.workers.dev
-```
-
-Then set **`VITE_GAME_HOST`** = that host (e.g. `chronael-chess.<you>.workers.dev`)
-in your Vercel project's Environment Variables and redeploy. Until it's set, the
-"Play a friend" button stays disabled (the rest of the app is unaffected).
-
-Current production deployment:
-
-- Web app: `https://chronael.vercel.app`
-- Game Worker: `https://chronael-chess.fran6jy.workers.dev`
-- Vercel project: `web-app` (do not confuse it with the older `chronael` project)
-- Production variable: `VITE_GAME_HOST=chronael-chess.fran6jy.workers.dev`
-
-The Worker assigns the first two connections white and black. Extra connections are
-spectators. If a player reconnects before their stale socket closes, the reconnect is
-temporarily a spectator and is automatically promoted when the seat becomes free.
-When troubleshooting an old room, close it on both devices and create a fresh invite.
-
-## How the difficulty works
-
-`src/engine.ts` maps each UI level to a Stockfish **Skill Level**, a per-move
-**thinking time**, and a **blunder probability**. At low levels the app sometimes
-substitutes a random legal move for the engine's choice — that randomness, not just a
-weak engine, is what makes a beginner able to win and stay motivated.
-
-## Roadmap (this app)
-
-- [ ] LLM coach: plain-English "why was that a mistake?" explanations from the engine
-      evaluation, and move ratings (good / inaccuracy / blunder).
-- [ ] "Learn the pieces" interactive tutorial before the first full game.
-- [ ] Promotion picker (currently auto-queens) and sound/animation polish.
-- [x] "Graduate" mode: play the Carlsen-style imitation model (the Magnus bot, live).
+| Path | What |
+| --- | --- |
+| `index.html`, `src/style.css` | Markup and the design system: Playfair Display + DM Sans, paper/cream/green/gold |
+| `src/main.ts` | App shell: views, games, puzzles, review, lessons, dashboard, online UI |
+| `src/coach.ts` | Move ratings, plain-English move descriptions, hint explanations |
+| `src/engine.ts` | Stockfish (WASM) wrapper |
+| `src/carlsen.ts`, `src/encoding.ts` | Magnus bot (ONNX) and its board encoding, which must match `chronael/encoding.py` |
+| `src/tutorial.ts` | Learn the pieces (learn, then test) |
+| `src/lessons.ts` | Lesson drills |
+| `src/progress.ts` | Stats, accuracy, puzzle rating, mistakes deck |
+| `src/mastery.ts`, `src/rules.ts` | Per-piece dot fading, and why-is-this-illegal explanations |
+| `src/puzzle.ts` | Daily puzzle and streak |
+| `src/online.ts` | Online rooms, Quick match, presence |
+| `src/heroDemo.ts` | Home page demo board |
+| `src/pwa.ts` | Service worker, install prompt, update banner |
+| `worker/chess.ts` | Cloudflare Worker: game rooms, matchmaking lobby, rate limiter |
+| `api/coach.ts` | Vercel function that phrases coach facts with a free LLM |
+| `scripts/` | Data and asset generators (rated puzzles, icons, encoding golden), lobby checks |
