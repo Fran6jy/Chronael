@@ -472,14 +472,38 @@ export class RateLimiter {
 
 
 /**
- * Quick-match lobby: a single Durable Object holding at most one waiting player.
- * A player opens a WebSocket; if someone is already waiting, both are sent the same new
- * room id and the sockets close. A player who closes the socket (gave up, or took the
- * client's 20-second bot fallback) simply leaves the queue, so nobody is paired with a
- * ghost.
+ * Quick-match lobby: one Durable Object for the whole site. Every socket says who it is
+ * (`cid`, a per-device id) and why it's here (`mode`):
+ *  - presence:   an open Chronael page; only counted, for the "N online" figure.
+ *  - search:     actively looking for a game (the Quick match screen).
+ *  - background: playing the computer after nobody was found, but still happy to be
+ *                matched. They get an OFFER (Join / Stay, 15 s) when someone searches.
+ * Two searchers are paired at once. A searcher and a background player are paired only
+ * if the background player accepts; if they decline or don't answer, the searcher goes
+ * straight back to searching and the next background player is asked. Anyone closing
+ * their socket leaves every queue, so nobody is paired with a ghost.
  */
+type LobbyMode = "presence" | "search" | "background";
+
+interface LobbyConn {
+  cid: string;
+  mode: LobbyMode;
+  offer?: string; // room id of a pending offer this socket is part of
+}
+
+interface Offer {
+  room: string;
+  searcher: WebSocket;
+  bg: WebSocket;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+const OFFER_MS = 15_000;
+
 export class Lobby {
-  private waiting: WebSocket | null = null;
+  private conns = new Map<WebSocket, LobbyConn>();
+  private offers = new Map<string, Offer>();
+  private declinedBy = new Map<WebSocket, Set<WebSocket>>(); // searcher -> background players who said no
 
   constructor(_state: DurableObjectState, _env: Env) {}
 
@@ -487,28 +511,154 @@ export class Lobby {
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("Expected a WebSocket connection.", { status: 426 });
     }
+    const url = new URL(request.url);
+    const modeParam = url.searchParams.get("mode");
+    const mode: LobbyMode = modeParam === "presence" || modeParam === "background" ? modeParam : "search";
+    const cid = (url.searchParams.get("cid") || crypto.randomUUID()).slice(0, 64);
+
     const pair = new WebSocketPair();
     const [client, server] = [pair[0], pair[1]];
     server.accept();
+    this.conns.set(server, { cid, mode });
 
-    const other = this.waiting;
-    if (other && other.readyState === WebSocket.READY_STATE_OPEN) {
-      this.waiting = null;
-      const room = `q${crypto.randomUUID().replace(/-/g, "").slice(0, 11)}`;
-      const msg = JSON.stringify({ type: "match", room });
-      other.send(msg);
-      server.send(msg);
-      other.close(1000, "matched");
-      server.close(1000, "matched");
-    } else {
-      this.waiting = server;
-      server.send(JSON.stringify({ type: "waiting" }));
-      const leave = () => {
-        if (this.waiting === server) this.waiting = null;
-      };
-      server.addEventListener("close", leave);
-      server.addEventListener("error", leave);
+    server.addEventListener("message", (evt) => this.onMessage(server, evt.data as string));
+    const leave = () => this.leave(server);
+    server.addEventListener("close", leave);
+    server.addEventListener("error", leave);
+
+    this.send(server, { type: "hello", online: this.online() });
+    this.broadcastPresence();
+    if (mode === "search") {
+      this.send(server, { type: "waiting" });
+      this.matchSearcher(server);
+    } else if (mode === "background") {
+      this.offerToBackground();
     }
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  /** Distinct devices with Chronael open. */
+  private online(): number {
+    return new Set([...this.conns.values()].map((c) => c.cid)).size;
+  }
+
+  private send(ws: WebSocket, msg: object): void {
+    try {
+      ws.send(JSON.stringify(msg));
+    } catch {
+      /* closed */
+    }
+  }
+
+  private broadcastPresence(): void {
+    const msg = { type: "presence", online: this.online() };
+    for (const ws of this.conns.keys()) this.send(ws, msg);
+  }
+
+  private newRoom(): string {
+    return `q${crypto.randomUUID().replace(/-/g, "").slice(0, 11)}`;
+  }
+
+  private free(ws: WebSocket, mode: LobbyMode): boolean {
+    const c = this.conns.get(ws);
+    return !!c && c.mode === mode && !c.offer && ws.readyState === WebSocket.READY_STATE_OPEN;
+  }
+
+  /** A searcher wants a game: another searcher first, else ask a background player. */
+  private matchSearcher(searcher: WebSocket): void {
+    if (!this.free(searcher, "search")) return;
+    const me = this.conns.get(searcher)!;
+    for (const [ws, c] of this.conns) {
+      if (ws !== searcher && c.cid !== me.cid && this.free(ws, "search")) {
+        const room = this.newRoom();
+        this.send(ws, { type: "match", room });
+        this.send(searcher, { type: "match", room });
+        this.conns.delete(ws);
+        this.conns.delete(searcher);
+        ws.close(1000, "matched");
+        searcher.close(1000, "matched");
+        this.broadcastPresence();
+        return;
+      }
+    }
+    const declined = this.declinedBy.get(searcher) ?? new Set<WebSocket>();
+    for (const [ws, c] of this.conns) {
+      if (c.cid !== me.cid && this.free(ws, "background") && !declined.has(ws)) {
+        this.makeOffer(searcher, ws);
+        return;
+      }
+    }
+  }
+
+  /** A background player became available: offer them to the longest-waiting searcher. */
+  private offerToBackground(): void {
+    for (const ws of this.conns.keys()) {
+      if (this.free(ws, "search")) this.matchSearcher(ws);
+    }
+  }
+
+  private makeOffer(searcher: WebSocket, bg: WebSocket): void {
+    const room = this.newRoom();
+    const timer = setTimeout(() => this.endOffer(room, false), OFFER_MS);
+    this.offers.set(room, { room, searcher, bg, timer });
+    this.conns.get(searcher)!.offer = room;
+    this.conns.get(bg)!.offer = room;
+    this.send(searcher, { type: "pending" });
+    this.send(bg, { type: "offer", room, expiresInMs: OFFER_MS });
+  }
+
+  private endOffer(room: string, accepted: boolean): void {
+    const offer = this.offers.get(room);
+    if (!offer) return;
+    clearTimeout(offer.timer);
+    this.offers.delete(room);
+    const s = this.conns.get(offer.searcher);
+    const b = this.conns.get(offer.bg);
+    if (s) s.offer = undefined;
+    if (b) b.offer = undefined;
+    if (accepted && s && b) {
+      this.send(offer.searcher, { type: "match", room });
+      this.send(offer.bg, { type: "go", room });
+      this.conns.delete(offer.searcher);
+      this.conns.delete(offer.bg);
+      offer.searcher.close(1000, "matched");
+      offer.bg.close(1000, "matched");
+      this.broadcastPresence();
+      return;
+    }
+    // Declined, timed out, or someone left: tell whoever is still here and move on.
+    if (b) {
+      this.send(offer.bg, { type: "offer_closed" });
+      const set = this.declinedBy.get(offer.searcher) ?? new Set<WebSocket>();
+      set.add(offer.bg);
+      this.declinedBy.set(offer.searcher, set);
+    }
+    if (s) {
+      this.send(offer.searcher, { type: "resume" });
+      this.matchSearcher(offer.searcher);
+    }
+  }
+
+  private onMessage(ws: WebSocket, data: string): void {
+    let msg: { type?: string; room?: string };
+    try {
+      msg = JSON.parse(data);
+    } catch {
+      return;
+    }
+    const c = this.conns.get(ws);
+    if (!c || c.mode !== "background" || !msg.room || c.offer !== msg.room) return;
+    if (msg.type === "accept") this.endOffer(msg.room, true);
+    else if (msg.type === "decline") this.endOffer(msg.room, false);
+  }
+
+  private leave(ws: WebSocket): void {
+    const c = this.conns.get(ws);
+    if (!c) return;
+    this.conns.delete(ws); // gone first, so the offer below isn't resolved "back" to them
+    if (c.offer) this.endOffer(c.offer, false);
+    this.declinedBy.delete(ws);
+    for (const set of this.declinedBy.values()) set.delete(ws);
+    this.broadcastPresence();
   }
 }

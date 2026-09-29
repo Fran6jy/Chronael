@@ -28,6 +28,9 @@ import {
   savedName,
   saveName,
   quickMatch,
+  watchPresence,
+  backgroundSearch,
+  type BackgroundOffer,
   type ConnectionState,
   type OnlineColor,
   type OnlineState,
@@ -858,6 +861,7 @@ function startBot(
   playerColor = opts.side ?? pickSide();
   const lv = opts.level ?? parseInt(el<HTMLSelectElement>("level").value, 10);
   if (Number.isFinite(lv)) levelIndex = lv; // "magnus" keeps the last coach level
+  if (!opts.real) stopBackgroundSearch();
   realGame = !!opts.real;
   el("play-panel").classList.toggle("real", realGame);
   showView("game");
@@ -903,6 +907,7 @@ function goHome(show = true): void {
   reviewState = null;
   vision = null;
   realGame = false;
+  stopBackgroundSearch();
   el("play-panel").classList.remove("real");
   window.clearInterval(visionTick);
   if (show) showView("home");
@@ -1960,7 +1965,7 @@ function updateOnlineUI(): void {
     s.status === "active" && s.turnDeadline
       ? Math.max(0, Math.ceil((s.turnDeadline - (s.serverNow + (Date.now() - onlineStateAt))) / 1000))
       : null;
-  const clock = left === null ? "" : ` · 0:${String(left).padStart(2, "0")}`;
+  const clock = left === null ? "" : ` · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
   if (s.over) setBanner(s.result ? `Game over · ${s.result}` : "Game over");
   else if (waiting) setBanner("Waiting for your friend to join…");
   else if (me === "spectator") setBanner(`Watching · ${colorToMove()} to move${clock}`);
@@ -2010,6 +2015,7 @@ function handleOnlineUserMove(orig: Key, dest: Key): void {
 }
 
 function enterOnline(roomId: string): void {
+  stopBackgroundSearch();
   leaveOnline();
   hideResult();
   tutorial.active = false;
@@ -2089,13 +2095,34 @@ function startQuickMatch(): void {
   modal.hidden = false;
   el<HTMLButtonElement>("match-bot").focus();
   const tick = window.setInterval(() => {
+    if (paused) return; // the search clock is paused while someone decides
     left = Math.max(0, left - 1);
     count.textContent = String(left);
   }, 1000);
   el("match-searching").hidden = false;
   el("match-choose").hidden = true;
   let outcome: "wait" | "cancel" | "bot" = "wait";
-  const q = quickMatch(20_000);
+  const title = el("match-title");
+  const sub = el("match-sub");
+  title.textContent = "Finding an opponent…";
+  sub.textContent = presenceText();
+  let paused = false;
+  const q = quickMatch(20_000, {
+    onPresence: (n) => {
+      onlineNow = n;
+      if (!paused) sub.textContent = presenceText();
+    },
+    onPending: () => {
+      paused = true;
+      title.textContent = "Found a player!";
+      sub.textContent = "They're finishing a game against the computer. Asking if they'd like to play you…";
+    },
+    onResume: () => {
+      paused = false;
+      title.textContent = "Finding an opponent…";
+      sub.textContent = "They stayed in their game. Still looking…";
+    },
+  });
   const stop = (why: "cancel" | "bot") => {
     outcome = why;
     q.cancel();
@@ -2117,6 +2144,68 @@ function startQuickMatch(): void {
   });
 }
 
+// ---------- Staying matchable while playing the computer ----------
+
+let onlineNow = 0; // devices with Chronael open, including this one
+let stopBg: (() => void) | null = null;
+let offerTimer = 0;
+
+function presenceText(): string {
+  const others = Math.max(0, onlineNow - 1);
+  return others === 0
+    ? "Nobody else is online right now. We'll keep looking while you wait."
+    : `${others} other ${others === 1 ? "person is" : "people are"} online now.`;
+}
+
+function hideOffer(): void {
+  window.clearInterval(offerTimer);
+  el("offer-banner").hidden = true;
+}
+
+function stopBackgroundSearch(): void {
+  hideOffer();
+  stopBg?.();
+  stopBg = null;
+}
+
+/** After an empty Quick match, keep the player matchable during their computer game. */
+function startBackgroundSearch(): void {
+  stopBackgroundSearch();
+  if (!gameConfigured()) return;
+  stopBg = backgroundSearch(showOffer, hideOffer, (room) => {
+    stopBackgroundSearch();
+    window.history.replaceState({}, "", shareUrl(room));
+    enterOnline(room);
+    toast("Live game! Good luck.");
+  });
+}
+
+function showOffer(offer: BackgroundOffer): void {
+  const banner = el("offer-banner");
+  const count = el("offer-count");
+  let left = Math.round(offer.expiresInMs / 1000);
+  count.textContent = `${left}s`;
+  el("offer-text").textContent = "A player is ready for a live game.";
+  banner.hidden = false;
+  playMove();
+  window.clearInterval(offerTimer);
+  offerTimer = window.setInterval(() => {
+    left = Math.max(0, left - 1);
+    count.textContent = `${left}s`;
+    if (left === 0) hideOffer();
+  }, 1000);
+  el("offer-join").onclick = () => {
+    window.clearInterval(offerTimer);
+    el("offer-text").textContent = "Joining…";
+    count.textContent = "";
+    offer.accept();
+  };
+  el("offer-stay").onclick = () => {
+    offer.decline();
+    stopBackgroundSearch(); // they chose the computer; don't keep asking
+  };
+}
+
 /** Nobody to play: let the player pick the computer opponent explicitly (real-game rules). */
 function chooseComputer(timedOut: boolean): void {
   const modal = el("matching");
@@ -2133,6 +2222,7 @@ function chooseComputer(timedOut: boolean): void {
     modal.hidden = true;
     const level = parseInt(el<HTMLSelectElement>("fb-level").value, 10);
     startBot(opp, { level: opp === "stockfish" ? level : undefined, side: side(), real: true });
+    startBackgroundSearch();
   };
   el("fb-coach").onclick = () => go("stockfish");
   el("fb-magnus").onclick = () => go("magnus");
@@ -2450,7 +2540,15 @@ function init(): void {
   el("hero-learn").addEventListener("click", startTutorial);
   el("hero-quick").addEventListener("click", () => withName(startQuickMatch));
   el("hero-friend").addEventListener("click", () => withName(createOnlineGame));
-  if (!gameConfigured()) {
+  if (gameConfigured()) {
+    watchPresence((n) => {
+      onlineNow = n;
+      const badge = el("online-count");
+      const others = Math.max(0, n - 1);
+      badge.hidden = others === 0;
+      badge.textContent = `${others} online`;
+    });
+  } else {
     for (const id of ["hero-quick", "hero-friend"]) {
       const b = el<HTMLButtonElement>(id);
       b.disabled = true;

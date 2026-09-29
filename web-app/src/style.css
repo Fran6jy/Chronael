@@ -412,6 +412,18 @@ button { font-family: inherit; }
 }
 .name-input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(191, 143, 77, 0.18); }
 
+/* "N online" on the Quick match button, and the live-game offer banner. */
+.online-count { margin-left: 4px; font-weight: 600; color: var(--muted); font-size: 0.8rem; }
+.online-count::before { content: "· "; }
+.offer-banner {
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 80; width: min(560px, calc(100vw - 20px));
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 14px; border-radius: 16px;
+  background: var(--green); color: #fff; box-shadow: var(--shadow-lg); font-weight: 600; animation: rise 0.3s ease;
+}
+.offer-banner #offer-text { flex: 1 1 180px; }
+.offer-count { font-variant-numeric: tabular-nums; opacity: 0.8; }
+.offer-stay { background: transparent; border: 1px solid rgba(255, 255, 255, 0.4); color: #fff; border-radius: 999px; padding: 6px 12px; font-weight: 600; cursor: pointer; }
+
 /* Quick-match fallback: an explicit choice of computer opponent. */
 .choose-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 12px; text-align: left; }
 .choose-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }

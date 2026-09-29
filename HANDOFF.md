@@ -68,12 +68,17 @@ browser (Vite + TS)
   - **Against people.** Online games never show dots.
   - **Board vision drills.** A lesson unit asks you to "tap every square the knight can
     reach".
-- **Quick match** (`Lobby` Durable Object at `/lobby`, `quickMatch()` in `src/online.ts`).
-  - **Pairing.** Anyone looking for a game opens a WebSocket to the lobby. If someone is
-    already waiting, both get the same new room id and join it as a normal online game.
-  - **Leaving.** Closing the socket leaves the queue, so nobody is paired with a ghost.
-  - **Fallback.** After 20 s with nobody around, the client starts a game against the
-    computer instead.
+- **Quick match** (`Lobby` Durable Object at `/lobby`, client code in `src/online.ts`).
+  - **Presence.** Every open page is counted per device, which drives "N online".
+  - **Pairing.** Two searchers are paired at once.
+  - **Background players.** After an empty search (20 s, paused while an offer is
+    pending), the player explicitly picks Coach bot (with a level) or Magnus, plays by
+    real-game rules, and stays matchable. A new searcher is offered to them with a
+    15 s Join/Stay banner. Stay or no answer releases the searcher back to searching,
+    and the next background player is asked.
+  - **Leaving.** Closing a socket leaves every queue and cancels its offers.
+  - **Tests.** `node scripts/check_lobby.mjs` runs 9 behaviour checks against
+    `wrangler dev`.
 - **Daily puzzle** (`src/puzzle.ts`, `public/puzzles.json`). There are 400 Lichess CC0
   puzzles rated 487–1299 across 9 themes. The day's puzzle is picked by date, so
   everyone gets the same one. The streak lives in localStorage under `chronael.puzzle`.

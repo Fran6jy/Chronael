@@ -174,17 +174,96 @@ export class OnlineGame {
   }
 }
 
-/**
- * Quick match: wait in the lobby for anyone else looking for a game. Resolves with a room
- * id when paired, or null after `timeoutMs` (or if the lobby can't be reached). Call the
- * returned `cancel` to leave the queue early.
- */
-export function quickMatch(timeoutMs = 20_000): { result: Promise<string | null>; cancel: () => void } {
+/** One id per device, so the "online" count doesn't double-count open tabs. */
+function deviceId(): string {
+  try {
+    let id = localStorage.getItem("chronael.device");
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem("chronael.device", id);
+    }
+    return id;
+  } catch {
+    return crypto.randomUUID();
+  }
+}
+
+function lobbyUrl(mode: "presence" | "search" | "background"): string {
   const proto = /^(localhost|127\.)/.test(HOST) ? "ws" : "wss";
+  return `${proto}://${HOST}/lobby?mode=${mode}&cid=${encodeURIComponent(deviceId())}`;
+}
+
+type LobbyMsg = { type?: string; room?: string; online?: number; expiresInMs?: number };
+
+function parse(e: MessageEvent): LobbyMsg | null {
+  try {
+    return JSON.parse(e.data as string) as LobbyMsg;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Presence: keeps a light connection to the lobby and reports how many devices have
+ * Chronael open (including this one). Reconnects quietly. Returns a stop function.
+ */
+export function watchPresence(onCount: (online: number) => void): () => void {
+  let ws: WebSocket | null = null;
+  let stopped = false;
+  let retry = 0;
+  const open = () => {
+    if (stopped) return;
+    try {
+      ws = new WebSocket(lobbyUrl("presence"));
+    } catch {
+      return;
+    }
+    ws.addEventListener("open", () => (retry = 0));
+    ws.addEventListener("message", (e) => {
+      const m = parse(e);
+      if (m && typeof m.online === "number") onCount(m.online);
+    });
+    ws.addEventListener("close", () => {
+      if (stopped) return;
+      retry++;
+      window.setTimeout(open, Math.min(30_000, 2000 * 2 ** Math.min(retry, 4)));
+    });
+  };
+  open();
+  return () => {
+    stopped = true;
+    ws?.close();
+  };
+}
+
+export interface QuickMatchHandlers {
+  onPresence?: (online: number) => void;
+  onPending?: () => void; // someone was found; waiting for them to accept
+  onResume?: () => void; // they didn't; still searching
+}
+
+/**
+ * Quick match: wait in the lobby for anyone else looking for a game, or for someone
+ * playing the computer in the background to accept. Resolves with a room id when paired,
+ * or null after `timeoutMs` of searching (the clock pauses while an offer is pending) or
+ * if the lobby can't be reached. Call `cancel` to leave the queue early.
+ */
+export function quickMatch(
+  timeoutMs = 20_000,
+  handlers: QuickMatchHandlers = {},
+): { result: Promise<string | null>; cancel: () => void } {
   let ws: WebSocket | null = null;
   let finish: (room: string | null) => void = () => {};
   const result = new Promise<string | null>((resolve) => {
     let done = false;
+    let timer = 0;
+    let left = timeoutMs;
+    let startedAt = Date.now();
+    const arm = () => {
+      window.clearTimeout(timer);
+      startedAt = Date.now();
+      timer = window.setTimeout(() => finish(null), left);
+    };
     finish = (room) => {
       if (done) return;
       done = true;
@@ -192,23 +271,72 @@ export function quickMatch(timeoutMs = 20_000): { result: Promise<string | null>
       if (ws && ws.readyState <= WebSocket.OPEN) ws.close();
       resolve(room);
     };
-    const timer = window.setTimeout(() => finish(null), timeoutMs);
+    arm();
     try {
-      ws = new WebSocket(`${proto}://${HOST}/lobby`);
+      ws = new WebSocket(lobbyUrl("search"));
     } catch {
       finish(null);
       return;
     }
-    ws.addEventListener("message", (e: MessageEvent) => {
-      try {
-        const msg = JSON.parse(e.data as string) as { type?: string; room?: string };
-        if (msg.type === "match" && msg.room) finish(msg.room);
-      } catch {
-        /* ignore */
+    ws.addEventListener("message", (e) => {
+      const m = parse(e);
+      if (!m) return;
+      if (typeof m.online === "number") handlers.onPresence?.(m.online);
+      if (m.type === "match" && m.room) finish(m.room);
+      else if (m.type === "pending") {
+        // Pause the search clock while someone decides.
+        window.clearTimeout(timer);
+        left = Math.max(5000, left - (Date.now() - startedAt));
+        handlers.onPending?.();
+      } else if (m.type === "resume") {
+        arm();
+        handlers.onResume?.();
       }
     });
     ws.addEventListener("error", () => finish(null));
     ws.addEventListener("close", () => window.setTimeout(() => finish(null), 0));
   });
   return { result, cancel: () => finish(null) };
+}
+
+export interface BackgroundOffer {
+  expiresInMs: number;
+  accept: () => void;
+  decline: () => void;
+}
+
+/**
+ * While playing the computer after an empty Quick match, stay matchable. `onOffer` fires
+ * when someone searches; accepting resolves `onMatch` with the room. Returns a stop fn.
+ */
+export function backgroundSearch(
+  onOffer: (offer: BackgroundOffer) => void,
+  onOfferClosed: () => void,
+  onMatch: (room: string) => void,
+): () => void {
+  let stopped = false;
+  let ws: WebSocket | null = null;
+  try {
+    ws = new WebSocket(lobbyUrl("background"));
+  } catch {
+    return () => {};
+  }
+  const sock = ws;
+  sock.addEventListener("message", (e) => {
+    const m = parse(e);
+    if (!m || stopped) return;
+    if (m.type === "offer" && m.room) {
+      const room = m.room;
+      onOffer({
+        expiresInMs: m.expiresInMs ?? 15_000,
+        accept: () => sock.send(JSON.stringify({ type: "accept", room })),
+        decline: () => sock.send(JSON.stringify({ type: "decline", room })),
+      });
+    } else if (m.type === "offer_closed") onOfferClosed();
+    else if (m.type === "go" && m.room) onMatch(m.room);
+  });
+  return () => {
+    stopped = true;
+    sock.close();
+  };
 }

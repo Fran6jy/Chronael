@@ -29,6 +29,14 @@
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
 
+    <div id="offer-banner" class="offer-banner" role="alertdialog" aria-labelledby="offer-text" hidden>
+      <span class="live-dot" aria-hidden="true"></span>
+      <span id="offer-text">A player is ready for a live game.</span>
+      <span id="offer-count" class="offer-count">15</span>
+      <button id="offer-join" type="button" class="banner-btn">Join</button>
+      <button id="offer-stay" type="button" class="offer-stay">Stay here</button>
+    </div>
+
     <div id="update-banner" class="banner" role="status" hidden>
       <span>A fresh version of Chronael is ready.</span>
       <button id="update-reload" type="button" class="banner-btn">Reload</button>
@@ -106,7 +114,7 @@
           </div>
           <div class="hero-online" aria-label="Play a person">
             <span class="hero-online-label">Play a person:</span>
-            <button id="hero-quick" type="button" class="pill-btn"><span class="live-dot" aria-hidden="true"></span>Quick match</button>
+            <button id="hero-quick" type="button" class="pill-btn"><span class="live-dot" aria-hidden="true"></span>Quick match<span id="online-count" class="online-count" hidden></span></button>
             <button id="hero-friend" type="button" class="pill-btn">Invite a friend</button>
           </div>
           <div id="continue" class="continue" hidden aria-label="Pick up where you left off"></div>
