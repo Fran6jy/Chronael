@@ -1674,7 +1674,7 @@ function renderContinue(streak: number, due: number, games: number): void {
   if (due > 0) items.push([`↺ <strong>${due}</strong> ${due === 1 ? "mistake" : "mistakes"} to review`, startMistakes]);
   const ls = lessonsSummary();
   if (ls.done > 0 && ls.done < ls.total) items.push([`📘 Lessons <strong>${ls.done}/${ls.total}</strong>`, openLessons]);
-  box.innerHTML = "";
+  box.innerHTML = '<span class="continue-label">Continue:</span>';
   const returning = games > 0 || streak > 0 || ls.done > 0;
   box.hidden = !returning || items.length === 0;
   for (const [html, go] of items) {

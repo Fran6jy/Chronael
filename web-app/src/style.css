@@ -267,7 +267,8 @@ button { font-family: inherit; }
 .coach-box { margin-top: 14px; background: var(--cream); border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 12px; padding: 12px 14px; }
 .coach-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 700; color: var(--gold); }
 .coach { font-size: 0.97rem; color: var(--ink); min-height: 2.6em; }
-#online-panel .coach { background: var(--cream); border-radius: 12px; padding: 12px 14px; margin-top: 10px; border-left: 3px solid var(--gold); }
+.online-note { background: var(--cream); border-radius: 12px; padding: 12px 14px; margin-top: 10px; font-size: 0.95rem; }
+.fair-note { margin: 8px 2px 0; font-size: 0.8rem; color: var(--muted); }
 
 .more { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
 .more summary { cursor: pointer; font-weight: 700; color: var(--green2); font-size: 0.9rem; }
@@ -364,12 +365,14 @@ button { font-family: inherit; }
 /* ---------- Hero actions + continue strip ---------- */
 .sub-short { display: none; }
 .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 18px; }
-.continue { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; }
+.continue { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; }
+.continue-label { font-size: 0.86rem; color: var(--muted); font-weight: 600; }
+/* Lighter than the "play a person" buttons: these are shortcuts, not ways to play. */
 .continue button {
-  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--paper);
-  border-radius: 999px; padding: 8px 14px; font-weight: 600; font-size: 0.88rem; color: var(--green); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; border: 0; background: var(--gold-soft);
+  border-radius: 999px; padding: 7px 12px; font-weight: 600; font-size: 0.85rem; color: #6d4a1b; cursor: pointer;
 }
-.continue button:hover { border-color: var(--gold); }
+.continue button:hover { background: #ecd9b8; }
 .continue strong { color: #8a5f25; }
 
 .hero-online { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
@@ -696,7 +699,8 @@ html, body { max-width: 100%; overflow-x: clip; }
   .hero-online-label { width: 100%; font-size: 0.8rem; }
   .hero-online .pill-btn { flex: 1 1 0; justify-content: center; }
   .home { row-gap: 14px; }
-  .continue { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 14px; padding: 0 16px; }
+  .continue { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 4px -16px 6px; padding: 0 16px; }
+  .continue-label { flex: 0 0 auto; font-size: 0.8rem; }
   .continue button { flex: 0 0 auto; }
   /* The coach "speaks" above the board: a bubble with a tail pointing at it, so the
      explanation is always in view and no pieces are covered. Fixed height = no jumping. */
