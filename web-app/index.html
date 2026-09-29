@@ -71,6 +71,18 @@
           </ul>
         </div>
 
+        <figure class="hero-demo reveal" aria-label="Example: the coach explaining moves as they're played">
+          <div class="demo-frame">
+            <div id="hero-board" class="cg-wrap demo-board board-theme"></div>
+          </div>
+          <figcaption id="demo-bubble" class="demo-bubble" aria-live="polite">
+            <span class="demo-coach"><span class="demo-avatar" aria-hidden="true">C</span> Coach</span>
+            <span id="demo-rating" class="demo-rating"></span>
+            <p id="demo-text"></p>
+          </figcaption>
+          <div id="demo-dots" class="demo-dots" role="group" aria-label="Examples"></div>
+        </figure>
+
         <aside class="entry" aria-labelledby="entry-title">
           <h2 id="entry-title" class="entry-title">Start playing</h2>
           <label class="field">
@@ -101,10 +113,11 @@
           <p class="entry-note">Your friend just opens the link. No sign-up for either of you.</p>
         </aside>
 
-        <div class="rows">
+        <div class="rows reveal">
           <h2 class="rows-title">Ways to play</h2>
           <div class="cards">
             <button id="card-learn" type="button" class="home-card featured">
+              <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2Z"/><path d="M8 7h6M8 11h8"/></svg></span>
               <span class="card-kicker">Your learning path</span>
               <span class="card-title" id="path-card-title">Lessons</span>
               <span class="card-sub" id="path-card-sub">From how the pieces move to checkmates, tactics, openings and endgames.</span>
@@ -112,36 +125,42 @@
               <span class="card-cta">Open the path →</span>
             </button>
             <button id="card-mistakes" type="button" class="home-card">
+              <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 8v4l3 2"/></svg></span>
               <span class="card-kicker">Your mistakes <span id="due-badge" class="streak" hidden></span></span>
               <span class="card-title">Learn from your games</span>
               <span class="card-sub" id="mistakes-card-sub">Positions where you slipped come back as puzzles, spaced out so they stick.</span>
               <span class="card-cta">Review →</span>
             </button>
             <button id="card-rated" type="button" class="home-card">
+              <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span>
               <span class="card-kicker">Rated puzzles</span>
-              <span class="card-title" id="rated-card-title">Puzzle rating 800</span>
-              <span class="card-sub">Puzzles that adapt to you, from beginner to 2500. Get one right and they get harder.</span>
+              <span class="card-title">Puzzles at your level</span>
+              <span class="card-sub" id="rated-card-sub">They adapt as you go: get one right and the next is a little harder. From first steps to master level.</span>
               <span class="card-cta">Train →</span>
             </button>
             <button id="card-puzzle" type="button" class="home-card">
+              <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="m9.5 15 2 2 3.5-4"/></svg></span>
               <span class="card-kicker">Daily puzzle <span id="streak-badge" class="streak" hidden></span></span>
               <span class="card-title" id="puzzle-card-title">Today’s puzzle</span>
               <span class="card-sub" id="puzzle-card-sub">One new puzzle every day. Keep your streak going.</span>
               <span class="card-cta">Solve →</span>
             </button>
             <button id="card-bot" type="button" class="home-card">
+              <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="12" rx="3"/><path d="M12 3v4M9 12h.01M15 12h.01M9.5 16h5"/></svg></span>
               <span class="card-kicker">Practice</span>
               <span class="card-title">Gentle bot</span>
               <span class="card-sub">Eight levels, from “makes mistakes on purpose” to properly strong.</span>
               <span class="card-cta">Play →</span>
             </button>
             <button id="card-magnus" type="button" class="home-card">
+              <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 8 4.5 4L12 5l4.5 7L21 8l-2 11H5L3 8Z"/></svg></span>
               <span class="card-kicker">Challenge</span>
               <span class="card-title">The Magnus bot</span>
               <span class="card-sub">A neural net trained on Magnus Carlsen’s games. It plays like him 27% of the time.</span>
               <span class="card-cta">Face it →</span>
             </button>
             <button id="card-progress" type="button" class="home-card wide">
+              <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
               <span class="card-kicker">Progress</span>
               <span class="card-title">How you’re improving</span>
               <span class="card-sub" id="progress-card-sub">Accuracy, blunders per game, puzzle rating and more, all in one place.</span>
@@ -150,13 +169,25 @@
           </div>
         </div>
 
-        <section class="about" id="about" aria-labelledby="about-title">
+        <section class="about reveal" id="about" aria-labelledby="about-title">
           <p class="eyebrow">About Chronael</p>
-          <h2 id="about-title" class="about-title">Duolingo for chess: a kind coach that explains <em>every</em> move.</h2>
+          <h2 id="about-title" class="about-title">A kind coach that explains <em>every</em> move.</h2>
           <p class="about-lead">
             Most chess apps just tell you a move was bad. Chronael tells you <strong>why</strong>, in plain English
             with no jargon, so complete beginners can actually get good.
           </p>
+
+          <div class="translate reveal" aria-label="The difference Chronael makes">
+            <div class="t-card t-engine">
+              <span class="t-label">What a chess engine tells you</span>
+              <code>3. Nxe5?? &nbsp;−2.9<br />best: 3. Bc4 &nbsp;+0.4</code>
+            </div>
+            <span class="t-arrow" aria-hidden="true">→</span>
+            <div class="t-card t-coach">
+              <span class="t-label">What Chronael tells you</span>
+              <p>“Careful: the other knight can take yours for free. Bring out your bishop first and everything stays safe.”</p>
+            </div>
+          </div>
 
           <h3 class="about-h">How it works</h3>
           <div class="about-grid">
@@ -232,7 +263,7 @@
           </div>
 
           <div class="board-wrap">
-            <div id="board" class="cg-wrap"></div>
+            <div id="board" class="cg-wrap board-theme"></div>
             <div id="promotion" class="promotion-overlay" hidden>
               <div class="promotion-card" role="dialog" aria-modal="true" aria-label="Choose a piece to promote to">
                 <p class="promotion-title">Promote your pawn to…</p>
@@ -430,7 +461,7 @@
         </svg>
         Buy me a coffee
       </a>
-      <p class="footer-note">Chronael is free and open source. If it helped you learn, a coffee keeps it going.</p>
+      <p class="footer-note">Chronael is free and <a href="https://github.com/Fran6jy/Chronael" target="_blank" rel="noopener noreferrer">open source</a>. If it helped you learn, a coffee keeps it going.</p>
     </footer>
 
     <script type="module" src="/src/main.ts"></script>

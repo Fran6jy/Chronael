@@ -44,6 +44,7 @@ import {
   type Puzzle,
 } from "./puzzle";
 import { setupPwa } from "./pwa";
+import { startHeroDemo, revealOnScroll } from "./heroDemo";
 import {
   progress,
   recordGame,
@@ -1672,7 +1673,10 @@ function refreshHomeCards(): void {
         : "One new puzzle every day. Keep your streak going.";
 
   const p = progress();
-  el("rated-card-title").textContent = `Puzzle rating ${p.puzzleRating}`;
+  el("rated-card-sub").textContent =
+    p.puzzlesPlayed === 0
+      ? "They adapt as you go: get one right and the next is a little harder. From first steps to master level."
+      : `Your puzzle rating is ${p.puzzleRating}. Keep solving and watch it climb.`;
   const due = dueCards().length;
   const dueBadge = el("due-badge");
   dueBadge.hidden = due === 0;
@@ -2134,6 +2138,8 @@ function init(): void {
   });
 
   setupPwa();
+  startHeroDemo();
+  revealOnScroll();
 
   // Deep links: ?room= joins a friend's game; ?play=puzzle opens today's puzzle.
   const params = new URL(window.location.href).searchParams;
