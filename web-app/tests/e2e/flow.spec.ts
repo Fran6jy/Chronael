@@ -112,7 +112,7 @@ test("every piece sits fully inside the board", async ({ page }) => {
   await page.evaluate(() => {
     document.getElementById("install")!.hidden = false; // as when the browser offers an install
   });
-  await page.locator("#start-bot").click();
+  await page.locator("#hero-play").click();
   await expect(page.locator("#board piece.king.white")).toBeVisible();
   const r = await page.evaluate(() => {
     const board = document.querySelector("#board")!.getBoundingClientRect();

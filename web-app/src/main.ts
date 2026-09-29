@@ -1986,13 +1986,46 @@ function enterOnline(roomId: string): void {
   render();
 }
 
+/**
+ * Playing a person: ask for a display name the first time only (remembered after), then go.
+ * Skipping is fine; the opponent just sees "White" or "Black".
+ */
+function withName(go: () => void): void {
+  if (savedName() || localStorageFlag("chronael.nameAsked")) {
+    go();
+    return;
+  }
+  const modal = el("name-modal");
+  const form = el<HTMLFormElement>("name-form");
+  const input = el<HTMLInputElement>("name");
+  input.value = "";
+  modal.hidden = false;
+  input.focus();
+  const close = () => {
+    modal.hidden = true;
+    form.onsubmit = null;
+    el("name-cancel").onclick = null;
+  };
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    saveName(input.value);
+    try {
+      localStorage.setItem("chronael.nameAsked", "1");
+    } catch {
+      /* ignore */
+    }
+    close();
+    go();
+  };
+  el("name-cancel").onclick = close;
+}
+
 /** Quick match: pair with anyone looking right now, or fall back to the computer. */
 function startQuickMatch(): void {
   if (!gameConfigured()) {
     toast("Online play isn't available right now.");
     return;
   }
-  saveName(el<HTMLInputElement>("name").value);
   const modal = el("matching");
   const count = el("match-count");
   let left = 20;
@@ -2089,19 +2122,18 @@ function init(): void {
   );
 
   // Home.
-  const nameInput = el<HTMLInputElement>("name");
-  nameInput.value = savedName();
-  nameInput.addEventListener("change", () => saveName(nameInput.value));
   el("brand").addEventListener("click", () => goHome());
-  el("start-bot").addEventListener("click", () => startBot());
   el("hero-play").addEventListener("click", () => startBot());
   el("hero-learn").addEventListener("click", startTutorial);
-  el("hero-quick").addEventListener("click", startQuickMatch);
-  el("quick-match").addEventListener("click", startQuickMatch);
-  el("hero-friend").addEventListener("click", () => {
-    saveName(el<HTMLInputElement>("name").value);
-    createOnlineGame();
-  });
+  el("hero-quick").addEventListener("click", () => withName(startQuickMatch));
+  el("hero-friend").addEventListener("click", () => withName(createOnlineGame));
+  if (!gameConfigured()) {
+    for (const id of ["hero-quick", "hero-friend"]) {
+      const b = el<HTMLButtonElement>(id);
+      b.disabled = true;
+      b.title = "Online play is being set up.";
+    }
+  }
   el("card-bot").addEventListener("click", () => startBot());
   el("card-magnus").addEventListener("click", () => startBot("magnus"));
   el("card-learn").addEventListener("click", openLessons);
@@ -2115,20 +2147,8 @@ function init(): void {
     goHome(false);
     showView("about");
   });
-  el("about-play").addEventListener("click", () => {
-    goHome();
-    el("entry-title").scrollIntoView({ behavior: "smooth", block: "start" });
-  });
+  el("about-play").addEventListener("click", () => goHome());
   el("about-lessons").addEventListener("click", openLessons);
-  const playFriendBtn = el<HTMLButtonElement>("play-friend");
-  if (!gameConfigured()) {
-    playFriendBtn.disabled = true;
-    playFriendBtn.title = "Online play is being set up (needs VITE_GAME_HOST).";
-  }
-  playFriendBtn.addEventListener("click", () => {
-    saveName(nameInput.value);
-    createOnlineGame();
-  });
 
   // Bot game controls.
   el<HTMLSelectElement>("opponent").addEventListener("change", (e) => {

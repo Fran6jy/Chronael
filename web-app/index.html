@@ -78,6 +78,27 @@
             <button id="hero-play" type="button" class="btn btn-primary btn-lg">Play now</button>
             <button id="hero-learn" type="button" class="btn btn-lg">I’ve never played</button>
           </div>
+          <div class="quick-settings" aria-label="Game settings">
+            <label class="qs-level">
+              <span>Level</span>
+              <select id="level">
+                <option value="0">1 · Gentle start</option>
+                <option value="1">2 · Very easy</option>
+                <option value="2" selected>3 · Easy</option>
+                <option value="3">4 · Casual</option>
+                <option value="4">5 · Improving</option>
+                <option value="5">6 · Club</option>
+                <option value="6">7 · Strong</option>
+                <option value="7">8 · Toughest</option>
+              </select>
+            </label>
+            <fieldset class="seg seg-sm" aria-label="Play as">
+              <legend>Play as</legend>
+              <label><input type="radio" name="side" value="white" checked /><span>White</span></label>
+              <label><input type="radio" name="side" value="black" /><span>Black</span></label>
+              <label><input type="radio" name="side" value="random" /><span>Random</span></label>
+            </fieldset>
+          </div>
           <div class="hero-online" aria-label="Play a person">
             <span class="hero-online-label">Play a person:</span>
             <button id="hero-quick" type="button" class="pill-btn"><span class="live-dot" aria-hidden="true"></span>Quick match</button>
@@ -102,37 +123,6 @@
           </figcaption>
           <div id="demo-dots" class="demo-dots" role="group" aria-label="Examples"></div>
         </figure>
-
-        <aside class="entry" aria-labelledby="entry-title">
-          <h2 id="entry-title" class="entry-title">Start playing</h2>
-          <label class="field">
-            <span>Your name <small>(shown to friends)</small></span>
-            <input id="name" type="text" maxlength="20" autocomplete="nickname" placeholder="e.g. Ada" />
-          </label>
-          <label class="field">
-            <span>Difficulty</span>
-            <select id="level">
-              <option value="0">1 · Gentle start (makes mistakes)</option>
-              <option value="1">2 · Very easy</option>
-              <option value="2" selected>3 · Easy</option>
-              <option value="3">4 · Casual</option>
-              <option value="4">5 · Improving</option>
-              <option value="5">6 · Club</option>
-              <option value="6">7 · Strong</option>
-              <option value="7">8 · Toughest</option>
-            </select>
-          </label>
-          <fieldset class="seg" aria-label="Your colour">
-            <legend>You play</legend>
-            <label><input type="radio" name="side" value="white" checked /><span>White</span></label>
-            <label><input type="radio" name="side" value="black" /><span>Black</span></label>
-            <label><input type="radio" name="side" value="random" /><span>Random</span></label>
-          </fieldset>
-          <button id="start-bot" type="button" class="btn btn-primary btn-lg">Play the computer</button>
-          <button id="play-friend" type="button" class="btn btn-gold btn-lg">Invite a friend</button>
-          <button id="quick-match" type="button" class="btn btn-lg">Quick match with anyone</button>
-          <p class="entry-note">Friends just open your link. Quick match pairs you with anyone looking now, or the computer after 20 seconds.</p>
-        </aside>
 
         <div class="rows reveal">
           <h2 class="rows-title">Ways to play</h2>
@@ -516,6 +506,20 @@
           <button id="match-cancel" type="button" class="btn btn-quiet">Cancel</button>
         </div>
       </div>
+    </div>
+
+    <!-- Name, asked only the first time you play a person -->
+    <div id="name-modal" class="modal" hidden>
+      <form id="name-form" class="modal-card name-card" role="dialog" aria-modal="true" aria-labelledby="name-title">
+        <p class="eyebrow">Playing a person</p>
+        <h2 id="name-title" class="result-title">What should we call you?</h2>
+        <p class="result-sub">Your opponent sees this name. You can leave it blank.</p>
+        <input id="name" type="text" maxlength="20" autocomplete="nickname" placeholder="e.g. Ada" class="name-input" />
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary btn-lg">Continue</button>
+          <button id="name-cancel" type="button" class="btn btn-quiet">Cancel</button>
+        </div>
+      </form>
     </div>
 
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
