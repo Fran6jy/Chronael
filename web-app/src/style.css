@@ -633,25 +633,29 @@ html, body { max-width: 100%; overflow-x: clip; }
   .sub-long, .hero-points { display: none; }
   .sub-short { display: inline; }
   .hero { padding-top: 0; }
-  .hero .eyebrow { margin-bottom: 6px; }
+  .hero .eyebrow { display: none; }
   .hero-title { margin-bottom: 10px; }
   .hero-sub { margin-bottom: 14px; }
   .hero-actions .btn { flex: 1 1 0; padding: 13px 10px; }
+  .hero-actions { margin-bottom: 4px; }
+  .home { row-gap: 14px; }
   .continue { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 14px; padding: 0 16px; }
   .continue button { flex: 0 0 auto; }
   /* The coach "speaks" above the board: a bubble with a tail pointing at it, so the
      explanation is always in view and no pieces are covered. Fixed height = no jumping. */
   .hero-demo { max-width: 340px; display: flex; flex-direction: column; }
   .demo-bubble {
-    order: -1; position: relative; margin: 0 0 14px; padding: 10px 14px; min-height: 104px;
+    order: -1; position: relative; margin: 0 0 12px; padding: 9px 13px; min-height: 92px;
     border-radius: 16px; box-shadow: var(--shadow-md);
   }
   .demo-bubble::after {
     content: ""; position: absolute; left: 50%; bottom: -8px; width: 16px; height: 16px; background: #fff;
     border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: translateX(-50%) rotate(45deg);
   }
-  .demo-bubble p { font-size: 0.92rem; margin-top: 6px; }
-  .demo-frame { max-width: 300px; width: 100%; align-self: center; }
+  .demo-bubble p { font-size: 0.88rem; line-height: 1.4; margin-top: 4px; }
+  /* Board size follows screen height too, so the whole demo fits on the first screen. */
+  .demo-frame { width: min(280px, calc(100svh - 470px)); min-width: 200px; align-self: center; padding: 8px; }
+  .demo-dots { margin-top: 10px; }
   .entry-title::after { content: " · more options"; font-family: var(--sans); font-size: 0.85rem; color: var(--muted); font-weight: 500; }
   .topbar { padding: 12px 14px 4px; }
   .brand { font-size: 1.35rem; }
