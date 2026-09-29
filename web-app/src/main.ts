@@ -229,8 +229,11 @@ let tutorial: PieceTutorial;
 
 // ---------- Views, panels, players ----------
 
-function showView(view: "home" | "game" | "lessons" | "progress"): void {
-  for (const v of ["home", "game", "lessons", "progress"]) el(v).hidden = v !== view;
+function showView(view: "home" | "game" | "lessons" | "progress" | "about"): void {
+  for (const v of ["home", "game", "lessons", "progress", "about"]) el(v).hidden = v !== view;
+  el("nav-about").classList.toggle("active", view === "about");
+  const hash = view === "about" ? "#about" : "";
+  if (window.location.hash !== hash) window.history.replaceState({}, "", `${window.location.pathname}${window.location.search}${hash}`);
   el("nav-lessons").classList.toggle("active", view === "lessons");
   el("nav-progress").classList.toggle("active", view === "progress");
   window.scrollTo({ top: 0 });
@@ -1961,6 +1964,8 @@ function leaveOnline(): void {
 // ---------- Init ----------
 
 function init(): void {
+  // Views are swapped in place, so the browser restoring an old scroll offset lands mid-page.
+  if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
   const config: Config = {
     fen: chess.fen(),
     orientation: playerColor,
@@ -2006,6 +2011,15 @@ function init(): void {
   el("card-progress").addEventListener("click", openProgress);
   el("nav-progress").addEventListener("click", openProgress);
   el("nav-lessons").addEventListener("click", openLessons);
+  el("nav-about").addEventListener("click", () => {
+    goHome(false);
+    showView("about");
+  });
+  el("about-play").addEventListener("click", () => {
+    goHome();
+    el("entry-title").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  el("about-lessons").addEventListener("click", openLessons);
   const playFriendBtn = el<HTMLButtonElement>("play-friend");
   if (!gameConfigured()) {
     playFriendBtn.disabled = true;
@@ -2146,7 +2160,14 @@ function init(): void {
   const roomParam = params.get("room");
   if (roomParam && /^[a-z0-9-]{3,40}$/i.test(roomParam)) enterOnline(roomParam.toLowerCase());
   else if (params.get("play") === "puzzle") void startDaily();
+  else if (window.location.hash === "#about") showView("about");
   else showView("home");
+  window.addEventListener("hashchange", () => {
+    if (window.location.hash === "#about") {
+      goHome(false);
+      showView("about");
+    } else if (!el("about").hidden) showView("home");
+  });
 
   // Test hook: dev server, or an e2e build (VITE_E2E=1).
   if (import.meta.env.DEV || import.meta.env.VITE_E2E) {

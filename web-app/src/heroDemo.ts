@@ -87,7 +87,7 @@ export function startHeroDemo(): void {
     const m = uciOf(f.history, f.move);
     ground.setShapes([]);
     ground.set({ fen: m.before, lastMove: undefined });
-    bubble.classList.remove("in");
+    bubble.classList.add("swap");
     dots.querySelectorAll("button").forEach((b, j) => b.classList.toggle("on", j === i));
     const reveal = () => {
       if (f.better) {
@@ -103,7 +103,7 @@ export function startHeroDemo(): void {
       ratingEl.textContent = f.label;
       ratingEl.className = `demo-rating ${f.rating}`;
       textEl.textContent = f.text;
-      bubble.classList.add("in");
+      bubble.classList.remove("swap");
     };
     if (animate) window.setTimeout(reveal, 650);
     else reveal();

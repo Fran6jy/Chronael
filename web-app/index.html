@@ -44,9 +44,18 @@
         <span>Chronael</span>
       </button>
       <nav class="topnav" aria-label="Main">
-        <button id="install" type="button" class="chip" hidden>Install app</button>
-        <button id="nav-lessons" type="button" class="chip nav-chip">Lessons</button>
-        <button id="nav-progress" type="button" class="chip nav-chip">Progress</button>
+        <button id="install" type="button" class="chip nav-chip" hidden aria-label="Install app">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span>Install</span>
+        </button>
+        <button id="nav-lessons" type="button" class="chip nav-chip" aria-label="Lessons">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2Z"/><path d="M8 7h6M8 11h8"/></svg><span>Lessons</span>
+        </button>
+        <button id="nav-progress" type="button" class="chip nav-chip" aria-label="Progress">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7"/></svg><span>Progress</span>
+        </button>
+        <button id="nav-about" type="button" class="chip nav-chip" aria-label="About">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg><span>About</span>
+        </button>
         <button id="mute" type="button" class="icon-btn" aria-pressed="false" aria-label="Mute sounds" title="Sound on/off">
           <svg class="mute-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
           <svg class="mute-off" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>
@@ -168,67 +177,103 @@
             </button>
           </div>
         </div>
-
-        <section class="about reveal" id="about" aria-labelledby="about-title">
-          <p class="eyebrow">About Chronael</p>
-          <h2 id="about-title" class="about-title">A kind coach that explains <em>every</em> move.</h2>
-          <p class="about-lead">
-            Most chess apps just tell you a move was bad. Chronael tells you <strong>why</strong>, in plain English
-            with no jargon, so complete beginners can actually get good.
-          </p>
-
-          <div class="translate reveal" aria-label="The difference Chronael makes">
-            <div class="t-card t-engine">
-              <span class="t-label">What a chess engine tells you</span>
-              <code>3. Nxe5?? &nbsp;−2.9<br />best: 3. Bc4 &nbsp;+0.4</code>
-            </div>
-            <span class="t-arrow" aria-hidden="true">→</span>
-            <div class="t-card t-coach">
-              <span class="t-label">What Chronael tells you</span>
-              <p>“Careful: the other knight can take yours for free. Bring out your bishop first and everything stays safe.”</p>
-            </div>
-          </div>
-
-          <h3 class="about-h">How it works</h3>
-          <div class="about-grid">
-            <article class="about-item">
-              <span class="about-num">1</span>
-              <h4>A world-class engine does the thinking</h4>
-              <p>Stockfish, one of the strongest chess engines in the world, runs right on your device. It judges every move, finds the best one and spots the threats.</p>
-            </article>
-            <article class="about-item">
-              <span class="about-num">2</span>
-              <h4>An AI explains it like a teacher</h4>
-              <p>Engine output (“Nf3, +1.2”) is first turned into simple facts like “the knight captures the bishop”. A language model then words them warmly. It never judges the chess itself, so it can’t invent bad advice, and built-in sentences take over if it’s unavailable.</p>
-            </article>
-            <article class="about-item">
-              <span class="about-num">3</span>
-              <h4>A bot trained on Magnus Carlsen</h4>
-              <p>A neural network trained on the world champion’s real games learned to predict his moves. It picks his actual move about 27% of the time, which is a lot given how many options each position has.</p>
-            </article>
-            <article class="about-item">
-              <span class="about-num">4</span>
-              <h4>Real puzzles, every level</h4>
-              <p>Over 3,000 puzzles from Lichess’s free public database, from beginner to expert. Your puzzle rating adapts as you solve them.</p>
-            </article>
-            <article class="about-item">
-              <span class="about-num">5</span>
-              <h4>It learns your weak spots</h4>
-              <p>Every game is reviewed move by move. Your own mistakes come back later as puzzles, spaced out until they stick.</p>
-            </article>
-            <article class="about-item">
-              <span class="about-num">6</span>
-              <h4>Play friends anywhere, fairly</h4>
-              <p>A small server keeps both boards in sync and checks every move is legal. Nobody can cheat, and no account is needed.</p>
-            </article>
-          </div>
-
-          <p class="about-foot">
-            Free, no sign-up, and your progress stays on your device. Every update is tested automatically,
-            and every lesson answer is checked by Stockfish before it goes in.
-          </p>
-        </section>
       </section>
+
+      <!-- ================= ABOUT ================= -->
+      <article id="about" class="page about-page" hidden aria-labelledby="about-title">
+        <p class="eyebrow">About</p>
+        <h1 id="about-title" class="page-title">Chess, explained the way a person would.</h1>
+        <p class="about-lede">
+          Chronael is a free chess coach for people who are just starting out. It plays with you, and after every
+          move it tells you, in ordinary words, what that move actually did.
+        </p>
+
+        <h2>The trouble with chess engines</h2>
+        <p>Engines are brilliant at chess and hopeless at teaching it. Ask one about a beginner’s move and this is what you get:</p>
+        <div class="compare">
+          <div class="compare-engine">
+            <span class="compare-label">A chess engine</span>
+            <code>3. Nxe5?? −2.9<br />best: 3. Bc4 +0.4</code>
+          </div>
+          <div class="compare-coach">
+            <span class="compare-label">Chronael</span>
+            <p>“Careful: the other knight can take yours for free. Bring out your bishop first and everything stays safe.”</p>
+          </div>
+        </div>
+        <p>Both say the same thing. Only one of them helps someone who started playing last week.</p>
+
+        <h2>What happens after you move</h2>
+        <ol class="steps">
+          <li>
+            <h3>Stockfish checks it</h3>
+            <p>
+              Stockfish, one of the strongest chess engines there is, runs inside your browser. It scores the position
+              before and after your move and finds the best alternative. Lose about one and a half pawns’ worth and it
+              counts as a mistake; three or more is a blunder.
+            </p>
+          </li>
+          <li>
+            <h3>The facts are put into plain words</h3>
+            <p>
+              Chess software writes a move as <em>Nxe5</em>. Chronael turns that into “the knight captures the pawn”, and
+              does the same for the better move and for whatever your opponent is now threatening.
+            </p>
+          </li>
+          <li>
+            <h3>A language model says it kindly</h3>
+            <p>
+              Only those plain facts go to a small AI model, which turns them into a sentence or two. It never sees the
+              board and never judges the chess, so it can’t make up a move. If it’s unavailable, Chronael writes the
+              sentence itself.
+            </p>
+          </li>
+        </ol>
+
+        <h2>The Magnus bot</h2>
+        <p>
+          One opponent is a neural network trained on Magnus Carlsen’s games. Given a position, it predicts the move he
+          would play. In testing, its first choice matched his real move 27% of the time. A typical position has around
+          thirty legal moves, so that is far better than guessing, but it is an imitation of his style, not the man
+          himself. It runs on your device after a one-time 24&nbsp;MB download.
+        </p>
+
+        <h2>What’s inside</h2>
+        <dl class="inside">
+          <div>
+            <dt>Lessons</dt>
+            <dd>How each piece moves, then 15 short drills on checkmates, winning material, the opening and the endgame. Every accepted answer has been checked by Stockfish.</dd>
+          </div>
+          <div>
+            <dt>Puzzles</dt>
+            <dd>A daily puzzle, plus 3,058 rated puzzles from the Lichess public database, from 528 to 2500. Your puzzle rating moves as you solve them.</dd>
+          </div>
+          <div>
+            <dt>Your mistakes</dt>
+            <dd>Mistakes you make against the bot are saved and come back as puzzles: straight away, then after 1, 3, 7, 14, 30 and 60 days while you keep getting them right.</dd>
+          </div>
+          <div>
+            <dt>Game review</dt>
+            <dd>After each game: an accuracy score, every move colour-coded, and the three moments that decided it, with the better move for you to find.</dd>
+          </div>
+          <div>
+            <dt>Playing friends</dt>
+            <dd>Send a link. A small server keeps both boards in sync and rejects illegal moves. If someone leaves, the other player can claim the game after a minute.</dd>
+          </div>
+        </dl>
+
+        <h2>How it’s run</h2>
+        <ul class="principles">
+          <li><strong>Free.</strong> No account, no adverts.</li>
+          <li><strong>Private.</strong> Your progress is stored in your own browser. The only things that leave your device are online games and the plain-English facts sent to the coach.</li>
+          <li><strong>Open source.</strong> The code is on <a href="https://github.com/Fran6jy/Chronael" target="_blank" rel="noopener noreferrer">GitHub</a>.</li>
+          <li><strong>Works anywhere.</strong> Once loaded it works offline, and it installs as an Android app.</li>
+        </ul>
+
+        <div class="about-cta">
+          <button id="about-play" type="button" class="btn btn-primary btn-lg">Start playing</button>
+          <button id="about-lessons" type="button" class="btn btn-lg">Open the lessons</button>
+        </div>
+      </article>
 
       <!-- ================= LESSON PATH ================= -->
       <section id="lessons" class="page" hidden aria-labelledby="lessons-title">

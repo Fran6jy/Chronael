@@ -86,3 +86,15 @@ test("rated puzzles load and show the rating", async ({ page }) => {
   await expect(page.locator("#puzzle-meta")).toContainText("Rated puzzle");
   await expect(page.locator("#ex-rating")).toHaveText("800");
 });
+
+test("no sideways scrolling, and About is its own page", async ({ page }) => {
+  for (const path of ["/", "/#about"]) {
+    await page.goto(path);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow, path).toBeLessThanOrEqual(0);
+  }
+  await expect(page.locator("#about")).toBeVisible();
+  await expect(page.locator("#home")).toBeHidden();
+  await page.locator("#nav-lessons").click();
+  await expect(page.locator("#lessons")).toBeVisible();
+});
