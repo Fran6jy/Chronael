@@ -1662,6 +1662,29 @@ function renderDashboard(): void {
   dash.innerHTML = tiles.join("");
 }
 
+/** Returning players get one-tap shortcuts to what's waiting for them. */
+function renderContinue(streak: number, due: number, games: number): void {
+  const box = el("continue");
+  const today = dayKey();
+  const items: [string, () => void][] = [];
+  if (loadStreak().last !== today) {
+    items.push([streak > 0 ? `🔥 <strong>${streak}-day streak</strong> · today's puzzle` : "Today's puzzle", () => void startDaily()]);
+  }
+  if (due > 0) items.push([`↺ <strong>${due}</strong> ${due === 1 ? "mistake" : "mistakes"} to review`, startMistakes]);
+  const ls = lessonsSummary();
+  if (ls.done > 0 && ls.done < ls.total) items.push([`📘 Lessons <strong>${ls.done}/${ls.total}</strong>`, openLessons]);
+  box.innerHTML = "";
+  const returning = games > 0 || streak > 0 || ls.done > 0;
+  box.hidden = !returning || items.length === 0;
+  for (const [html, go] of items) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.innerHTML = html;
+    b.addEventListener("click", go);
+    box.appendChild(b);
+  }
+}
+
 function refreshHomeCards(): void {
   const today = dayKey();
   const s = loadStreak();
@@ -1692,6 +1715,7 @@ function refreshHomeCards(): void {
       : due > 0
         ? `${due} of your own mistakes are ready. Fix them now and they come back less often.`
         : `${p.deck.length} saved. Nothing due right now; they return over the coming days.`;
+  renderContinue(n, due, p.games.length);
   const ls = lessonsSummary();
   el("path-card-title").textContent = ls.done === 0 ? "Start the lessons" : `Lessons · ${ls.done}/${ls.total}`;
   (el("path-meter") as HTMLElement).style.width = `${Math.round((ls.done / ls.total) * 100)}%`;
@@ -2010,6 +2034,8 @@ function init(): void {
   nameInput.addEventListener("change", () => saveName(nameInput.value));
   el("brand").addEventListener("click", () => goHome());
   el("start-bot").addEventListener("click", () => startBot());
+  el("hero-play").addEventListener("click", () => startBot());
+  el("hero-learn").addEventListener("click", startTutorial);
   el("card-bot").addEventListener("click", () => startBot());
   el("card-magnus").addEventListener("click", () => startBot("magnus"));
   el("card-learn").addEventListener("click", openLessons);

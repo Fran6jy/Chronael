@@ -70,9 +70,15 @@
           <p class="eyebrow">A kind place to learn chess</p>
           <h1 id="hero-title" class="hero-title">Learn chess, <em>calmly.</em></h1>
           <p class="hero-sub">
-            Every move you make, a patient coach tells you what it did, in plain English, no notation.
-            Beat a gentle bot, solve today’s puzzle, or send a friend a link and play from anywhere.
+            <span class="sub-long">Every move you make, a patient coach tells you what it did, in plain English, no notation.
+            Beat a gentle bot, solve today’s puzzle, or send a friend a link and play from anywhere.</span>
+            <span class="sub-short">A patient coach explains every move in plain English.</span>
           </p>
+          <div class="hero-actions">
+            <button id="hero-play" type="button" class="btn btn-primary btn-lg">Play now</button>
+            <button id="hero-learn" type="button" class="btn btn-lg">I’ve never played</button>
+          </div>
+          <div id="continue" class="continue" hidden aria-label="Pick up where you left off"></div>
           <ul class="hero-points" aria-label="What you get">
             <li>Explained moves, good and bad</li>
             <li>Take-backs and hints, always</li>
@@ -80,7 +86,7 @@
           </ul>
         </div>
 
-        <figure class="hero-demo reveal" aria-label="Example: the coach explaining moves as they're played">
+        <figure class="hero-demo" aria-label="Example: the coach explaining moves as they're played">
           <div class="demo-frame">
             <div id="hero-board" class="cg-wrap demo-board board-theme"></div>
           </div>

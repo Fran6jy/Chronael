@@ -118,3 +118,11 @@ test("every piece sits fully inside the board", async ({ page }) => {
   expect(r.inside).toBe(true);
   expect(r.overflow).toBeLessThanOrEqual(0);
 });
+
+test("first screen: Play now is visible without scrolling and starts a game", async ({ page }) => {
+  await page.goto("/");
+  const play = page.locator("#hero-play");
+  await expect(play).toBeInViewport();
+  await play.click();
+  await expect(page.locator("#status")).toHaveText("Your move.");
+});

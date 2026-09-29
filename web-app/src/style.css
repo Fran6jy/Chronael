@@ -361,6 +361,17 @@ button { font-family: inherit; }
 .nav-chip { background: transparent; }
 @media (max-width: 560px) { .nav-chip { padding: 7px 10px; font-size: 0.82rem; } }
 
+/* ---------- Hero actions + continue strip ---------- */
+.sub-short { display: none; }
+.hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 18px; }
+.continue { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; }
+.continue button {
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--paper);
+  border-radius: 999px; padding: 8px 14px; font-weight: 600; font-size: 0.88rem; color: var(--green); cursor: pointer;
+}
+.continue button:hover { border-color: var(--gold); }
+.continue strong { color: #8a5f25; }
+
 /* ---------- Hero demo ---------- */
 .hero-demo { grid-area: demo; margin: 0; position: relative; padding-top: 18px; align-self: start; max-width: 520px; justify-self: end; width: 100%; }
 .demo-frame {
@@ -617,6 +628,22 @@ button { font-family: inherit; }
 /* Nothing may ever widen the page sideways. */
 html, body { max-width: 100%; overflow-x: clip; }
 @media (max-width: 560px) {
+  /* First screen on a phone: headline, one line, two buttons, then the demo. */
+  .home { grid-template-areas: "hero" "demo" "rows" "panel"; }
+  .sub-long, .hero-points { display: none; }
+  .sub-short { display: inline; }
+  .hero { padding-top: 0; }
+  .hero .eyebrow { margin-bottom: 6px; }
+  .hero-title { margin-bottom: 10px; }
+  .hero-sub { margin-bottom: 14px; }
+  .hero-actions .btn { flex: 1 1 0; padding: 13px 10px; }
+  .continue { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 14px; padding: 0 16px; }
+  .continue button { flex: 0 0 auto; }
+  /* The coach bubble sits on the board so the explanation is always in view. */
+  .hero-demo { max-width: 320px; position: relative; }
+  .demo-bubble { position: absolute; left: 12px; right: 12px; top: 18px; margin: 0; padding: 10px 12px; box-shadow: 0 10px 30px rgba(35, 45, 39, 0.25); }
+  .demo-bubble p { font-size: 0.9rem; margin-top: 6px; }
+  .entry-title::after { content: " · more options"; font-family: var(--sans); font-size: 0.85rem; color: var(--muted); font-weight: 500; }
   .topbar { padding: 12px 14px 4px; }
   .brand { font-size: 1.35rem; }
   .hero-points li { font-size: 0.8rem; padding: 5px 10px; }
