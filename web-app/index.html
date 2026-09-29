@@ -78,6 +78,11 @@
             <button id="hero-play" type="button" class="btn btn-primary btn-lg">Play now</button>
             <button id="hero-learn" type="button" class="btn btn-lg">I’ve never played</button>
           </div>
+          <div class="hero-online" aria-label="Play a person">
+            <span class="hero-online-label">Play a person:</span>
+            <button id="hero-quick" type="button" class="pill-btn"><span class="live-dot" aria-hidden="true"></span>Quick match</button>
+            <button id="hero-friend" type="button" class="pill-btn">Invite a friend</button>
+          </div>
           <div id="continue" class="continue" hidden aria-label="Pick up where you left off"></div>
           <ul class="hero-points" aria-label="What you get">
             <li>Explained moves, good and bad</li>
@@ -125,7 +130,8 @@
           </fieldset>
           <button id="start-bot" type="button" class="btn btn-primary btn-lg">Play the computer</button>
           <button id="play-friend" type="button" class="btn btn-gold btn-lg">Invite a friend</button>
-          <p class="entry-note">Your friend just opens the link. No sign-up for either of you.</p>
+          <button id="quick-match" type="button" class="btn btn-lg">Quick match with anyone</button>
+          <p class="entry-note">Friends just open your link. Quick match pairs you with anyone looking now, or the computer after 20 seconds.</p>
         </aside>
 
         <div class="rows reveal">
@@ -493,6 +499,20 @@
           <button id="result-alt" type="button" class="btn" hidden>Play again</button>
           <button id="result-share" type="button" class="btn">Share</button>
           <button id="result-home" type="button" class="btn btn-quiet">Home</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick match -->
+    <div id="matching" class="modal" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="match-title">
+        <p class="eyebrow">Quick match</p>
+        <h2 id="match-title" class="result-title">Finding an opponent…</h2>
+        <div class="match-ring" aria-hidden="true"><span id="match-count">20</span></div>
+        <p class="result-sub" id="match-sub">Pairing you with anyone else looking for a game. If nobody turns up, you’ll play the computer instead.</p>
+        <div class="modal-actions">
+          <button id="match-bot" type="button" class="btn btn-primary">Play the computer now</button>
+          <button id="match-cancel" type="button" class="btn btn-quiet">Cancel</button>
         </div>
       </div>
     </div>

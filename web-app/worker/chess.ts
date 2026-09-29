@@ -20,6 +20,7 @@ import { Chess } from "chess.js";
 export interface Env {
   CHESS_ROOM: DurableObjectNamespace;
   RATE_LIMITER: DurableObjectNamespace;
+  LOBBY: DurableObjectNamespace;
   RL_SECRET?: string;
 }
 
@@ -48,6 +49,12 @@ export default {
 
     if (parts[0] === "room" && parts[1] && /^[a-z0-9-]{3,40}$/i.test(parts[1])) {
       const stub = env.CHESS_ROOM.get(env.CHESS_ROOM.idFromName(parts[1].toLowerCase()));
+      return stub.fetch(request);
+    }
+
+    // Quick match: everyone looking for a game waits in one lobby until paired.
+    if (parts[0] === "lobby") {
+      const stub = env.LOBBY.get(env.LOBBY.idFromName("global"));
       return stub.fetch(request);
     }
 
@@ -412,5 +419,48 @@ export class RateLimiter {
     const allowed = this.hits.length < limit;
     if (allowed) this.hits.push(now);
     return Response.json({ allowed, remaining: Math.max(0, limit - this.hits.length) });
+  }
+}
+
+
+/**
+ * Quick-match lobby: a single Durable Object holding at most one waiting player.
+ * A player opens a WebSocket; if someone is already waiting, both are sent the same new
+ * room id and the sockets close. A player who closes the socket (gave up, or took the
+ * client's 20-second bot fallback) simply leaves the queue, so nobody is paired with a
+ * ghost.
+ */
+export class Lobby {
+  private waiting: WebSocket | null = null;
+
+  constructor(_state: DurableObjectState, _env: Env) {}
+
+  async fetch(request: Request): Promise<Response> {
+    if (request.headers.get("Upgrade") !== "websocket") {
+      return new Response("Expected a WebSocket connection.", { status: 426 });
+    }
+    const pair = new WebSocketPair();
+    const [client, server] = [pair[0], pair[1]];
+    server.accept();
+
+    const other = this.waiting;
+    if (other && other.readyState === WebSocket.READY_STATE_OPEN) {
+      this.waiting = null;
+      const room = `q${crypto.randomUUID().replace(/-/g, "").slice(0, 11)}`;
+      const msg = JSON.stringify({ type: "match", room });
+      other.send(msg);
+      server.send(msg);
+      other.close(1000, "matched");
+      server.close(1000, "matched");
+    } else {
+      this.waiting = server;
+      server.send(JSON.stringify({ type: "waiting" }));
+      const leave = () => {
+        if (this.waiting === server) this.waiting = null;
+      };
+      server.addEventListener("close", leave);
+      server.addEventListener("error", leave);
+    }
+    return new Response(null, { status: 101, webSocket: client });
   }
 }

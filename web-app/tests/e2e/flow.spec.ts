@@ -126,3 +126,18 @@ test("first screen: Play now is visible without scrolling and starts a game", as
   await play.click();
   await expect(page.locator("#status")).toHaveText("Your move.");
 });
+
+test("during a game, the coach and Hint are on screen without scrolling", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#hero-play").click();
+  await expect(page.locator("#status")).toHaveText("Your move.");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page.locator("#hint")).toBeInViewport();
+  await expect(page.locator("#coach")).toBeInViewport();
+});
+
+test("ways to play a person are visible on the first screen", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#hero-quick")).toBeInViewport();
+  await expect(page.locator("#hero-friend")).toBeInViewport();
+});

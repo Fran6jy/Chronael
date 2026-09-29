@@ -27,6 +27,7 @@ import {
   gameConfigured,
   savedName,
   saveName,
+  quickMatch,
   type ConnectionState,
   type OnlineColor,
   type OnlineState,
@@ -1965,6 +1966,45 @@ function enterOnline(roomId: string): void {
   render();
 }
 
+/** Quick match: pair with anyone looking right now, or fall back to the computer. */
+function startQuickMatch(): void {
+  if (!gameConfigured()) {
+    toast("Online play isn't available right now.");
+    return;
+  }
+  saveName(el<HTMLInputElement>("name").value);
+  const modal = el("matching");
+  const count = el("match-count");
+  let left = 20;
+  count.textContent = String(left);
+  modal.hidden = false;
+  el<HTMLButtonElement>("match-bot").focus();
+  const tick = window.setInterval(() => {
+    left = Math.max(0, left - 1);
+    count.textContent = String(left);
+  }, 1000);
+  let outcome: "wait" | "cancel" | "bot" = "wait";
+  const q = quickMatch(20_000);
+  const stop = (why: "cancel" | "bot") => {
+    outcome = why;
+    q.cancel();
+  };
+  el("match-cancel").onclick = () => stop("cancel");
+  el("match-bot").onclick = () => stop("bot");
+  void q.result.then((room) => {
+    window.clearInterval(tick);
+    modal.hidden = true;
+    if (room && outcome === "wait") {
+      window.history.replaceState({}, "", shareUrl(room));
+      enterOnline(room);
+      toast("Matched with another player. Good luck!");
+    } else if (outcome !== "cancel") {
+      if (outcome === "wait") toast("Nobody's around right now, so you're playing the computer.");
+      startBot();
+    }
+  });
+}
+
 function createOnlineGame(): void {
   const roomId = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
   window.history.replaceState({}, "", shareUrl(roomId));
@@ -2036,6 +2076,12 @@ function init(): void {
   el("start-bot").addEventListener("click", () => startBot());
   el("hero-play").addEventListener("click", () => startBot());
   el("hero-learn").addEventListener("click", startTutorial);
+  el("hero-quick").addEventListener("click", startQuickMatch);
+  el("quick-match").addEventListener("click", startQuickMatch);
+  el("hero-friend").addEventListener("click", () => {
+    saveName(el<HTMLInputElement>("name").value);
+    createOnlineGame();
+  });
   el("card-bot").addEventListener("click", () => startBot());
   el("card-magnus").addEventListener("click", () => startBot("magnus"));
   el("card-learn").addEventListener("click", openLessons);

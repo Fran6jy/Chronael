@@ -53,6 +53,12 @@ browser (Vite + TS)
   - **Abandonment.** When a player has been away 60 s, the opponent may claim the win.
   - **Waiting.** After 20 s of waiting, the inviter is offered the bot while the link
     keeps working.
+- **Quick match** (`Lobby` Durable Object at `/lobby`, `quickMatch()` in `src/online.ts`).
+  - **Pairing.** Anyone looking for a game opens a WebSocket to the lobby. If someone is
+    already waiting, both get the same new room id and join it as a normal online game.
+  - **Leaving.** Closing the socket leaves the queue, so nobody is paired with a ghost.
+  - **Fallback.** After 20 s with nobody around, the client starts a game against the
+    computer instead.
 - **Daily puzzle** (`src/puzzle.ts`, `public/puzzles.json`). There are 400 Lichess CC0
   puzzles rated 487–1299 across 9 themes. The day's puzzle is picked by date, so
   everyone gets the same one. The streak lives in localStorage under `chronael.puzzle`.

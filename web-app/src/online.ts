@@ -170,3 +170,42 @@ export class OnlineGame {
     this.ws = null;
   }
 }
+
+/**
+ * Quick match: wait in the lobby for anyone else looking for a game. Resolves with a room
+ * id when paired, or null after `timeoutMs` (or if the lobby can't be reached). Call the
+ * returned `cancel` to leave the queue early.
+ */
+export function quickMatch(timeoutMs = 20_000): { result: Promise<string | null>; cancel: () => void } {
+  const proto = /^(localhost|127\.)/.test(HOST) ? "ws" : "wss";
+  let ws: WebSocket | null = null;
+  let finish: (room: string | null) => void = () => {};
+  const result = new Promise<string | null>((resolve) => {
+    let done = false;
+    finish = (room) => {
+      if (done) return;
+      done = true;
+      window.clearTimeout(timer);
+      if (ws && ws.readyState <= WebSocket.OPEN) ws.close();
+      resolve(room);
+    };
+    const timer = window.setTimeout(() => finish(null), timeoutMs);
+    try {
+      ws = new WebSocket(`${proto}://${HOST}/lobby`);
+    } catch {
+      finish(null);
+      return;
+    }
+    ws.addEventListener("message", (e: MessageEvent) => {
+      try {
+        const msg = JSON.parse(e.data as string) as { type?: string; room?: string };
+        if (msg.type === "match" && msg.room) finish(msg.room);
+      } catch {
+        /* ignore */
+      }
+    });
+    ws.addEventListener("error", () => finish(null));
+    ws.addEventListener("close", () => window.setTimeout(() => finish(null), 0));
+  });
+  return { result, cancel: () => finish(null) };
+}

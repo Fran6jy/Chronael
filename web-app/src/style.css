@@ -372,6 +372,22 @@ button { font-family: inherit; }
 .continue button:hover { border-color: var(--gold); }
 .continue strong { color: #8a5f25; }
 
+.hero-online { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+.hero-online-label { font-size: 0.86rem; color: var(--muted); font-weight: 600; }
+.pill-btn {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 8px 14px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--paper); color: var(--green); font-weight: 700; font-size: 0.9rem; cursor: pointer;
+}
+.pill-btn:hover { border-color: var(--gold); }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: #3f9a5c; box-shadow: 0 0 0 0 rgba(63, 154, 92, 0.5); animation: live 1.8s infinite; }
+@keyframes live { 70% { box-shadow: 0 0 0 7px rgba(63, 154, 92, 0); } 100% { box-shadow: 0 0 0 0 rgba(63, 154, 92, 0); } }
+.match-ring {
+  width: 86px; height: 86px; margin: 6px auto 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  border: 4px solid var(--line); border-top-color: var(--gold); animation: spin 1.1s linear infinite;
+}
+.match-ring span { animation: spin 1.1s linear infinite reverse; font-family: var(--serif); font-size: 1.8rem; font-weight: 700; color: var(--green); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ---------- Hero demo ---------- */
 .hero-demo { grid-area: demo; margin: 0; position: relative; padding-top: 18px; align-self: start; max-width: 520px; justify-self: end; width: 100%; }
 .demo-frame {
@@ -625,6 +641,44 @@ button { font-family: inherit; }
   .brand span { font-size: 1.25rem; }
   .brand-mark { width: 24px; height: 24px; }
 }
+/* Phones: during a game the coach and the main actions are pinned to the bottom of the
+   screen, so there's no scrolling below the board to find Hint or Take back. */
+@media (max-width: 720px) {
+  #play-panel .coach-box {
+    position: fixed; left: 10px; right: 10px; bottom: calc(62px + env(safe-area-inset-bottom)); z-index: 40; margin: 0;
+    max-height: 30vh; overflow-y: auto; background: var(--paper); box-shadow: 0 -6px 24px rgba(35, 45, 39, 0.16);
+    padding: 10px 12px;
+  }
+  #play-panel .coach { min-height: 0; font-size: 0.92rem; }
+  #play-panel .btn-grid {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; margin: 0; gap: 6px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); background: var(--cream); border-top: 1px solid var(--line);
+  }
+  #play-panel .coach-box { border-radius: 14px 14px 0 0; border-bottom: 0; left: 0; right: 0; }
+  #puzzle-panel #puzzle-text { border-radius: 14px 14px 0 0; left: 0; right: 0; }
+  #play-panel .btn-grid .btn { min-height: 46px; padding: 6px 4px; font-size: 0.8rem; }
+  .game:has(#play-panel:not([hidden])) { padding-bottom: 190px; }
+  /* Board + both player rows + coach + buttons all fit on one screen. */
+  .game:has(#play-panel:not([hidden])) .board-col { max-width: max(260px, calc(100svh - 420px)); }
+  .game:has(#puzzle-panel:not([hidden])) .board-col { max-width: max(260px, calc(100svh - 400px)); }
+  .turn-banner { padding: 8px 14px; font-size: 1.05rem; }
+  .player-row { padding: 6px 10px; }
+  .avatar { width: 32px; height: 32px; font-size: 0.95rem; }
+  .game:has(#play-panel:not([hidden])) ~ .toast, .toast { bottom: calc(190px + env(safe-area-inset-bottom)); }
+  #puzzle-panel .btn-row {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; margin: 0;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); background: var(--cream); border-top: 1px solid var(--line);
+  }
+  #puzzle-panel #puzzle-text {
+    position: fixed; left: 10px; right: 10px; bottom: calc(62px + env(safe-area-inset-bottom)); z-index: 40; margin: 0;
+    background: var(--paper); border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 12px;
+    padding: 10px 12px; box-shadow: 0 -6px 24px rgba(35, 45, 39, 0.16); max-height: 30vh; overflow-y: auto; font-size: 0.92rem;
+  }
+  .game:has(#puzzle-panel:not([hidden])) { padding-bottom: 200px; }
+  .site-footer { padding-bottom: 24px; }
+}
+
 /* Nothing may ever widen the page sideways. */
 html, body { max-width: 100%; overflow-x: clip; }
 @media (max-width: 560px) {
@@ -637,7 +691,10 @@ html, body { max-width: 100%; overflow-x: clip; }
   .hero-title { margin-bottom: 10px; }
   .hero-sub { margin-bottom: 14px; }
   .hero-actions .btn { flex: 1 1 0; padding: 13px 10px; }
-  .hero-actions { margin-bottom: 4px; }
+  .hero-actions { margin-bottom: 10px; }
+  .hero-online { margin-bottom: 4px; gap: 6px; }
+  .hero-online-label { width: 100%; font-size: 0.8rem; }
+  .hero-online .pill-btn { flex: 1 1 0; justify-content: center; }
   .home { row-gap: 14px; }
   .continue { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 14px; padding: 0 16px; }
   .continue button { flex: 0 0 auto; }
