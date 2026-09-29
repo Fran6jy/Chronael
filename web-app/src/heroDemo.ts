@@ -105,7 +105,8 @@ export function startHeroDemo(): void {
       textEl.textContent = f.text;
       bubble.classList.remove("swap");
     };
-    if (animate) window.setTimeout(reveal, 650);
+    // Fade the old words out briefly, then show the move and the new words together.
+    if (animate) window.setTimeout(reveal, 320);
     else reveal();
   };
 

@@ -98,3 +98,23 @@ test("no sideways scrolling, and About is its own page", async ({ page }) => {
   await page.locator("#nav-lessons").click();
   await expect(page.locator("#lessons")).toBeVisible();
 });
+
+test("every piece sits fully inside the board", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    document.getElementById("install")!.hidden = false; // as when the browser offers an install
+  });
+  await page.locator("#start-bot").click();
+  await expect(page.locator("#board piece.king.white")).toBeVisible();
+  const r = await page.evaluate(() => {
+    const board = document.querySelector("#board")!.getBoundingClientRect();
+    // Skip the drag ghost Chessground keeps hidden in the board.
+    const pieces = [...document.querySelectorAll("#board piece:not(.ghost)")].map((p) => p.getBoundingClientRect());
+    return {
+      inside: pieces.every((p) => p.left >= board.left - 1 && p.right <= board.right + 1),
+      overflow: document.documentElement.scrollWidth - window.innerWidth,
+    };
+  });
+  expect(r.inside).toBe(true);
+  expect(r.overflow).toBeLessThanOrEqual(0);
+});

@@ -238,6 +238,8 @@ function showView(view: "home" | "game" | "lessons" | "progress" | "about"): voi
   el("nav-progress").classList.toggle("active", view === "progress");
   window.scrollTo({ top: 0 });
   if (view === "home") refreshHomeCards();
+  // The board was measured while hidden; size it now that the game view is visible.
+  if (view === "game" && ground) ground.redrawAll();
 }
 
 function showPanel(id: (typeof PANELS)[number]): void {
@@ -1978,6 +1980,12 @@ function init(): void {
     coordinates: true, // built once; shown/hidden via the .coords-on CSS class
   };
   ground = Chessground(el<HTMLDivElement>("board"), config);
+  // The board's size follows the screen on phones; re-measure on rotate or resize.
+  let resizeRaf = 0;
+  window.addEventListener("resize", () => {
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(() => document.body.dispatchEvent(new Event("chessground.resize")));
+  });
 
   tutorial = new PieceTutorial(
     ground,

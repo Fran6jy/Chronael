@@ -241,10 +241,10 @@ button { font-family: inherit; }
 }
 
 .board-wrap { position: relative; }
-#board.cg-wrap {
-  width: min(92vw, 600px); height: min(92vw, 600px);
-  border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-lg); border: 6px solid var(--paper);
-}
+/* The paper frame lives on the wrapper, so Chessground measures only the squares
+   (a border on the board itself makes it size the squares too large and clip the h-file). */
+.board-wrap { background: var(--paper); padding: 6px; border-radius: 16px; box-shadow: var(--shadow-lg); }
+#board.cg-wrap { width: 100%; height: auto; aspect-ratio: 1; border-radius: 11px; overflow: hidden; }
 
 .side { display: flex; flex-direction: column; gap: 14px; }
 .side-card {
@@ -373,7 +373,7 @@ button { font-family: inherit; }
   position: relative; margin: -28px 18px 0 38px; z-index: 3; background: #fff; border: 1px solid var(--line);
   border-radius: 18px 18px 18px 4px; padding: 14px 16px 14px; box-shadow: var(--shadow-md);
 }
-.demo-bubble p, .demo-rating { transition: opacity 0.3s ease; }
+.demo-bubble p, .demo-rating { transition: opacity 0.2s ease; }
 .demo-bubble.swap p, .demo-bubble.swap .demo-rating { opacity: 0; }
 .demo-coach { display: inline-flex; align-items: center; gap: 6px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
 .demo-avatar { width: 22px; height: 22px; border-radius: 50%; background: var(--green); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-family: var(--serif); font-size: 0.8rem; letter-spacing: 0; }
@@ -592,7 +592,9 @@ button { font-family: inherit; }
   .hero { padding-top: 8px; }
   .entry { position: static; }
   .game { grid-template-columns: 1fr; justify-items: center; padding: 8px 12px 28px; }
-  .side { width: min(92vw, 600px); }
+  .game { justify-items: stretch; }
+  .board-col, .side { width: 100%; max-width: 600px; justify-self: center; }
+
 }
 @media (max-width: 900px) {
   .hero-demo { max-width: 460px; width: 100%; justify-self: center; padding-top: 0; }
@@ -600,9 +602,20 @@ button { font-family: inherit; }
 }
 @media (max-width: 720px) {
   .nav-chip span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .nav-chip { width: 40px; height: 40px; padding: 0; justify-content: center; border-radius: 50%; }
-  .topnav { gap: 6px; }
+  .nav-chip { width: 38px; height: 38px; padding: 0; justify-content: center; border-radius: 50%; flex: 0 0 auto; }
+  .topnav { gap: 4px; flex: 0 0 auto; }
+  .topnav .icon-btn { width: 38px; height: 38px; flex: 0 0 auto; }
+  .topbar { gap: 8px; }
+  .brand { min-width: 0; flex: 0 1 auto; }
 }
+/* Phones: the Android app is offered in the footer, so the header keeps to four buttons. */
+@media (max-width: 480px) {
+  #install { display: none !important; }
+  .brand span { font-size: 1.25rem; }
+  .brand-mark { width: 24px; height: 24px; }
+}
+/* Nothing may ever widen the page sideways. */
+html, body { max-width: 100%; overflow-x: clip; }
 @media (max-width: 560px) {
   .topbar { padding: 12px 14px 4px; }
   .brand { font-size: 1.35rem; }
