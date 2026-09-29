@@ -83,6 +83,9 @@ let levelIndex = 2;
 let lastMove: [Key, Key] | undefined;
 let thinking = false;
 let botResigned = false;
+// A "real game" against the computer (Quick match fallback): no coach, hints,
+// take-backs or dots during play; the review is still there afterwards.
+let realGame = false;
 let gameNo = 0; // bumps on every new bot game, so the result moment shows once per game
 let resultShownFor = "";
 
@@ -326,8 +329,8 @@ function render(): void {
     // Dots are decided per piece when one is picked up (onSelect). Games against people
     // never show them. free/showDests are reset explicitly: the tutorial test changes both.
     movable: {
-      free: mode === "online",
-      showDests: mode !== "online",
+      free: mode === "online" || (mode === "bot" && realGame),
+      showDests: !(mode === "online" || (mode === "bot" && realGame)),
       color: movable ? playerColor : undefined,
       dests: movable ? legalDests() : new Map(),
     },
@@ -348,7 +351,11 @@ function updateStatus(inCheck: boolean): void {
   if (chess.isCheckmate()) {
     const youWon = colorToMove() !== playerColor;
     setBanner(youWon ? "Checkmate — you won!" : "Checkmate.");
-    coachEl.textContent = youWon ? "Well played! Try a harder level?" : "Good effort. Take a move back and try again.";
+    coachEl.textContent = youWon
+      ? "Well played! Try a harder level?"
+      : realGame
+        ? "Good effort. Open the review to see where it turned."
+        : "Good effort. Take a move back and try again.";
     return;
   }
   if (chess.isStalemate()) {
@@ -365,6 +372,7 @@ function updateStatus(inCheck: boolean): void {
   if (thinking) setBanner(`${opponent === "magnus" ? "Magnus bot" : "Chronael"} is thinking…`);
   else if (playerTurn()) setBanner(inCheck ? "Your move — you're in check!" : "Your move.");
 
+  if (realGame) return; // no coaching during a real game
   if (inCheck && playerTurn()) {
     coachEl.textContent = "You're in check! Move your king, block the attack, or capture the attacker.";
   } else if (!thinking && playerTurn() && !feedbackActive) {
@@ -653,6 +661,7 @@ async function coachOnMove(
     addMistake(snapshot.fen, snapshot.bestUci, movedUci, loss);
   }
 
+  if (realGame) return; // logged for the review; nothing shown during a real game
   updateEvalBar(whiteCp(fenAfter, after.scoreCp));
   ratingEl.textContent = ratingLabel(rating);
   ratingEl.className = `rating ${rating}`;
@@ -685,7 +694,7 @@ async function prepareCoach(): Promise<void> {
   const { scoreCp, bestMove } = await engine.analyse(fen);
   if (chess.fen() !== fen) return;
   beforeEval = { fen, scoreCp, bestUci: bestMove };
-  updateEvalBar(whiteCp(fen, scoreCp));
+  if (!realGame) updateEvalBar(whiteCp(fen, scoreCp));
 }
 
 async function engineMove(): Promise<void> {
@@ -732,6 +741,7 @@ async function engineMove(): Promise<void> {
 
 /** Hint: a green arrow for a strong move AND a plain-English reason why it's good. */
 async function showHint(): Promise<void> {
+  if (realGame) return;
   if (!playerTurn() || thinking) return;
   const fen = chess.fen();
   const hintBtn = el<HTMLButtonElement>("hint");
@@ -771,6 +781,7 @@ function resetCoachUi(): void {
 }
 
 function takeBack(): void {
+  if (realGame) return;
   if (chess.history().length === 0 || thinking) return;
   coachSeq++;
   if (botResigned || chess.isGameOver()) resultShownFor = "";
@@ -837,21 +848,34 @@ function setOpponent(next: Opponent): void {
   }
 }
 
-function startBot(opp: Opponent = "stockfish"): void {
+function startBot(
+  opp: Opponent = "stockfish",
+  opts: { level?: number; side?: Color; real?: boolean } = {},
+): void {
   leaveOnline();
   if (tutorial.active) tutorial.active = false;
   hideResult();
-  playerColor = pickSide();
-  const lv = parseInt(el<HTMLSelectElement>("level").value, 10);
+  playerColor = opts.side ?? pickSide();
+  const lv = opts.level ?? parseInt(el<HTMLSelectElement>("level").value, 10);
   if (Number.isFinite(lv)) levelIndex = lv; // "magnus" keeps the last coach level
+  realGame = !!opts.real;
+  el("play-panel").classList.toggle("real", realGame);
   showView("game");
   showPanel("play-panel");
   opponent = opp;
   newGame();
-  setOpponent(opp); // after newGame so its "loading" message isn't replaced by a tip
+  if (realGame) {
+    feedbackActive = true;
+    coachEl.textContent = "Real game: no hints, take-backs or move dots. You'll get a full review at the end.";
+  } else {
+    setOpponent(opp); // after newGame so its "loading" message isn't replaced by a tip
+  }
+  if (realGame && opp === "magnus" && !carlsen.ready) void carlsen.load().catch(() => undefined);
 }
 
 function startTutorial(): void {
+  realGame = false;
+  el("play-panel").classList.remove("real");
   leaveOnline();
   hideResult();
   mode = "bot";
@@ -878,6 +902,8 @@ function goHome(show = true): void {
   ex = null;
   reviewState = null;
   vision = null;
+  realGame = false;
+  el("play-panel").classList.remove("real");
   window.clearInterval(visionTick);
   if (show) showView("home");
 }
@@ -2066,6 +2092,8 @@ function startQuickMatch(): void {
     left = Math.max(0, left - 1);
     count.textContent = String(left);
   }, 1000);
+  el("match-searching").hidden = false;
+  el("match-choose").hidden = true;
   let outcome: "wait" | "cancel" | "bot" = "wait";
   const q = quickMatch(20_000);
   const stop = (why: "cancel" | "bot") => {
@@ -2076,16 +2104,46 @@ function startQuickMatch(): void {
   el("match-bot").onclick = () => stop("bot");
   void q.result.then((room) => {
     window.clearInterval(tick);
-    modal.hidden = true;
     if (room && outcome === "wait") {
+      modal.hidden = true;
       window.history.replaceState({}, "", shareUrl(room));
       enterOnline(room);
       toast("Matched with another player. Good luck!");
-    } else if (outcome !== "cancel") {
-      if (outcome === "wait") toast("Nobody's around right now, so you're playing the computer.");
-      startBot();
+    } else if (outcome === "cancel") {
+      modal.hidden = true;
+    } else {
+      chooseComputer(outcome === "wait");
     }
   });
+}
+
+/** Nobody to play: let the player pick the computer opponent explicitly (real-game rules). */
+function chooseComputer(timedOut: boolean): void {
+  const modal = el("matching");
+  modal.hidden = false;
+  el("match-searching").hidden = true;
+  el("match-choose").hidden = false;
+  el("choose-title").textContent = timedOut ? "Nobody’s around right now" : "Play the computer";
+  const side = (): Color => {
+    const v = (document.querySelector('input[name="fb-side"]:checked') as HTMLInputElement | null)?.value;
+    if (v === "white" || v === "black") return v;
+    return Math.random() < 0.5 ? "white" : "black";
+  };
+  const go = (opp: Opponent) => {
+    modal.hidden = true;
+    const level = parseInt(el<HTMLSelectElement>("fb-level").value, 10);
+    startBot(opp, { level: opp === "stockfish" ? level : undefined, side: side(), real: true });
+  };
+  el("fb-coach").onclick = () => go("stockfish");
+  el("fb-magnus").onclick = () => go("magnus");
+  el("match-retry").onclick = () => {
+    modal.hidden = true;
+    startQuickMatch();
+  };
+  el("match-close").onclick = () => {
+    modal.hidden = true;
+  };
+  el<HTMLButtonElement>("fb-coach").focus();
 }
 
 function createOnlineGame(): void {
@@ -2155,7 +2213,7 @@ function onSelect(key: Key): void {
     visionTap(key);
     return;
   }
-  if (mode === "online") return; // render() already set free movement, no dots
+  if (mode === "online" || realGame) return; // render() already set free movement, no dots
   const p = chess.get(key as Square);
   if (!p || (p.color === "w") !== (playerColor === "white")) return;
   const learned = isMastered(p.type);
@@ -2169,7 +2227,7 @@ function setupPeek(boardEl: HTMLElement): void {
   boardEl.addEventListener("pointerdown", () => {
     cancel();
     timer = window.setTimeout(() => {
-      if (mode === "online" || mode === "vision" || tutorial.active) return;
+      if (mode === "online" || mode === "vision" || realGame || tutorial.active) return;
       const sel = ground.state.selected;
       const p = sel ? chess.get(sel as Square) : null;
       if (!p || !isMastered(p.type)) return;
@@ -2386,7 +2444,9 @@ function init(): void {
   };
   levelSel.addEventListener("change", reflectOpponent);
   reflectOpponent();
-  el("hero-play").addEventListener("click", () => startBot(levelSel.value === "magnus" ? "magnus" : "stockfish"));
+  el("hero-play").addEventListener("click", () =>
+    startBot(levelSel.value === "magnus" ? "magnus" : "stockfish", { real: false }),
+  );
   el("hero-learn").addEventListener("click", startTutorial);
   el("hero-quick").addEventListener("click", () => withName(startQuickMatch));
   el("hero-friend").addEventListener("click", () => withName(createOnlineGame));
@@ -2460,7 +2520,7 @@ function init(): void {
 
   // Online.
   el("online-leave").addEventListener("click", () => goHome());
-  el("fallback-bot").addEventListener("click", () => startBot());
+  el("fallback-bot").addEventListener("click", () => chooseComputer(false));
   el("resign").addEventListener("click", () => {
     if (window.confirm("Resign this game?")) online?.resign();
   });

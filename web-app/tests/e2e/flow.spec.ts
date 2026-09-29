@@ -228,3 +228,23 @@ test("board vision drill: find every square, earn stars", async ({ page }) => {
   await expect(page.locator("#vision-found")).toHaveText("8 / 8 found");
   await expect(page.locator("#vision-text")).toContainText("no mistakes");
 });
+
+test("quick match with nobody around: choose the computer explicitly, real-game rules", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#hero-quick").click();
+  // First time playing a person: name prompt (blank is fine).
+  await page.locator("#name-form button[type=submit]").click();
+  // No game server in this test run, so the lobby can't pair anyone.
+  await expect(page.locator("#match-choose")).toBeVisible({ timeout: 25_000 });
+  await page.locator("#fb-level").selectOption("4");
+  await page.locator("input[name=fb-side][value=white]").check({ force: true });
+  await page.locator("#fb-coach").click();
+
+  await expect(page.locator("#status")).toHaveText("Your move.");
+  await expect(page.locator("#sub-top")).toContainText("level 5");
+  await expect(page.locator("#hint")).toBeHidden();
+  await expect(page.locator("#undo")).toBeHidden();
+  await expect(page.locator("#coach")).toContainText("Real game");
+  await clickSquare(page, "e2");
+  await expect(page.locator("#board square.move-dest")).toHaveCount(0);
+});

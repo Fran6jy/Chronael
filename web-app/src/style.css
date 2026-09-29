@@ -412,6 +412,18 @@ button { font-family: inherit; }
 }
 .name-input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(191, 143, 77, 0.18); }
 
+/* Quick-match fallback: an explicit choice of computer opponent. */
+.choose-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 12px; text-align: left; }
+.choose-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.choose-name { font-family: var(--serif); font-weight: 600; font-size: 1.1rem; color: var(--green); }
+.choose-note { font-size: 0.8rem; color: var(--muted); flex: 1; }
+.choose-card select { padding: 8px; border-radius: 10px; border: 1px solid var(--line); font: inherit; font-size: 0.9rem; }
+.choose-side { justify-content: center; margin: 0 0 14px; }
+@media (max-width: 420px) { .choose-grid { grid-template-columns: 1fr; } }
+/* Real game (Quick match fallback): no coaching tools during play. */
+#play-panel.real #undo, #play-panel.real #hint, #play-panel.real .evalrow, #play-panel.real #coach-more { display: none !important; }
+#play-panel.real .btn-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
 /* ---------- Hero demo ---------- */
 /* The coach "speaks" above the board: a bubble with a tail pointing at it, so no pieces
    are ever covered. No tilt: Chessground measures its box, and a rotated box made it draw
