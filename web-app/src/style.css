@@ -639,10 +639,19 @@ html, body { max-width: 100%; overflow-x: clip; }
   .hero-actions .btn { flex: 1 1 0; padding: 13px 10px; }
   .continue { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 14px; padding: 0 16px; }
   .continue button { flex: 0 0 auto; }
-  /* The coach bubble sits on the board so the explanation is always in view. */
-  .hero-demo { max-width: 320px; position: relative; }
-  .demo-bubble { position: absolute; left: 12px; right: 12px; top: 18px; margin: 0; padding: 10px 12px; box-shadow: 0 10px 30px rgba(35, 45, 39, 0.25); }
-  .demo-bubble p { font-size: 0.9rem; margin-top: 6px; }
+  /* The coach "speaks" above the board: a bubble with a tail pointing at it, so the
+     explanation is always in view and no pieces are covered. Fixed height = no jumping. */
+  .hero-demo { max-width: 340px; display: flex; flex-direction: column; }
+  .demo-bubble {
+    order: -1; position: relative; margin: 0 0 14px; padding: 10px 14px; min-height: 104px;
+    border-radius: 16px; box-shadow: var(--shadow-md);
+  }
+  .demo-bubble::after {
+    content: ""; position: absolute; left: 50%; bottom: -8px; width: 16px; height: 16px; background: #fff;
+    border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: translateX(-50%) rotate(45deg);
+  }
+  .demo-bubble p { font-size: 0.92rem; margin-top: 6px; }
+  .demo-frame { max-width: 300px; width: 100%; align-self: center; }
   .entry-title::after { content: " · more options"; font-family: var(--sans); font-size: 0.85rem; color: var(--muted); font-weight: 500; }
   .topbar { padding: 12px 14px 4px; }
   .brand { font-size: 1.35rem; }
