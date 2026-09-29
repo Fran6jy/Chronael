@@ -141,8 +141,26 @@ npx vercel env add RL_SECRET production
 5. Close B. A sees "disconnected" with a countdown and can claim the win after 60 s.
 6. `curl https://chronael.vercel.app/version.json` returns the deployed commit.
 
+## Android app
+
+The Android app is a Trusted Web Activity, package `app.vercel.chronael.twa`, version
+1.0.0 (code 1). It opens https://chronael.vercel.app full screen.
+- **How it was built.** PWABuilder's cloud generator produced an unsigned APK and AAB
+  (options in `C:\Users\fran6\Documents\chronael-android\options.json`). They were then
+  signed locally with the Temurin JDK 17 and Android build-tools in
+  `C:\Users\fran6\android-tools`: `zipalign` and `apksigner` for the APK, `jarsigner`
+  for the AAB.
+- **Signing key.** It lives in `Documents\chronael-android`: `signing.keystore`, alias
+  `chronael`, with passwords in `signing-key-info.txt`. Back it up and never commit it;
+  `.gitignore` blocks `*.keystore`, `*.jks` and `*.aab`.
+- **Download.** The signed APK is served from `web-app/public/downloads/chronael.apk`
+  (linked in the footer). The service worker never caches it.
+- **Asset links.** `web-app/public/.well-known/assetlinks.json` holds the certificate's
+  SHA-256, so Android drops the URL bar. With Play App Signing, add Play's app-signing
+  SHA-256 there as a second fingerprint.
+- **When to rebuild.** Web changes ship without a new APK. Rebuild only to change the
+  name, icon or package settings, or to bump the version for Play.
+
 ## Not done yet
 
-- **Android app (TWA/APK).** The PWA is installable today. Wrapping it with Bubblewrap
-  needs a signing key and a `/.well-known/assetlinks.json`; that is left for later.
 - **Clocks.** Online games are untimed. Abandonment uses the 60 s away rule instead.

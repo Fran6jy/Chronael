@@ -487,6 +487,11 @@ button { font-family: inherit; }
   background: var(--gold); color: #fff; font-weight: 700; font-size: 0.95rem; text-decoration: none;
   box-shadow: var(--shadow-sm); transition: transform var(--ease), box-shadow var(--ease);
 }
+.apk-link {
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; margin: 0 6px 10px; border-radius: 999px;
+  background: var(--green); color: #fff; font-weight: 700; font-size: 0.95rem; text-decoration: none; box-shadow: var(--shadow-sm);
+}
+.apk-link:hover { background: var(--green2); }
 .bmc-button:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .bmc-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .footer-note { color: var(--muted); font-size: 0.82rem; margin: 12px auto 0; max-width: 46ch; }

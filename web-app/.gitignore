@@ -22,3 +22,8 @@ test-results/
 playwright-report/
 
 .vercel
+
+# Android signing material and store bundles live outside the repo
+*.keystore
+*.jks
+*.aab

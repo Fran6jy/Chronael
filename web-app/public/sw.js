@@ -2,7 +2,7 @@
 //  - Pages: network first (so a new deploy shows up), cached copy when offline.
 //  - Built assets, engine, puzzles, model, icons: cache first (hashed or rarely change).
 //  - /api/* and version.json: always network, never cached.
-const CACHE = "chronael-v2";
+const CACHE = "chronael-v3";
 const SHELL = ["./", "./index.html", "./puzzles.json", "./manifest.webmanifest", "./icons/icon-192.png"];
 
 self.addEventListener("install", (event) => {
@@ -28,7 +28,7 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith("/api/") || url.pathname.endsWith("/version.json")) return;
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/downloads/") || url.pathname.endsWith("/version.json")) return;
 
   if (req.mode === "navigate") {
     event.respondWith(
