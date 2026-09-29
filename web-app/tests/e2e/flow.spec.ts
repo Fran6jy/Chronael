@@ -178,3 +178,53 @@ test("the opponent picker offers the Magnus bot next to Play now", async ({ page
   await page.locator("#hero-play").click();
   await expect(page.locator("#name-top")).toHaveText("Magnus bot");
 });
+
+test("dots fade per piece: a learned knight has none and illegal tries are explained", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() =>
+    localStorage.setItem("chronael.mastery", JSON.stringify({ n: { clean: 15, tested: true, peeks: 0 } })),
+  );
+  await page.goto("/");
+  await page.locator("#hero-play").click();
+  await expect(page.locator("#status")).toHaveText("Your move.");
+
+  // Unlearned pawn: dots as usual.
+  await clickSquare(page, "e2");
+  await expect(page.locator("#board square.move-dest")).toHaveCount(2);
+  await clickSquare(page, "e2"); // put it down again
+
+  // Learned knight: no dots; an impossible jump is explained, not played.
+  await clickSquare(page, "g1");
+  await expect(page.locator("#board square.move-dest")).toHaveCount(0);
+  await clickSquare(page, "g3");
+  await expect(page.locator("#coach")).toContainText("L");
+  await expect(page.locator("#moves li")).toHaveCount(0);
+
+  // A legal knight move still works without dots.
+  await move(page, "g1", "f3");
+  await expect(page.locator("#moves li").first()).toContainText("Nf3");
+});
+
+test("board vision drill: find every square, earn stars", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#nav-lessons").click();
+  await page.getByRole("button", { name: "King" }).first().click();
+  await expect(page.locator("#vision-title")).toContainText("king");
+  // Wait for the previous position's pieces to finish animating away.
+  await expect(page.locator("#board piece:not(.ghost):not(.fading)")).toHaveCount(1);
+  // Chessground records each piece's square on the element (cgKey): no pixel maths
+  // while it may still be sliding into place.
+  const from = await page.evaluate(
+    () => (document.querySelector("#board piece:not(.ghost):not(.fading)") as HTMLElement & { cgKey: string }).cgKey,
+  );
+  const f = from.charCodeAt(0) - 97;
+  const r = Number(from[1]) - 1;
+  for (let df = -1; df <= 1; df++) {
+    for (let dr = -1; dr <= 1; dr++) {
+      if (!df && !dr) continue;
+      await clickSquare(page, `${"abcdefgh"[f + df]}${r + dr + 1}`);
+    }
+  }
+  await expect(page.locator("#vision-found")).toHaveText("8 / 8 found");
+  await expect(page.locator("#vision-text")).toContainText("no mistakes");
+});

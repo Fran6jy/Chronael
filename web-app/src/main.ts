@@ -45,6 +45,8 @@ import {
   type Puzzle,
 } from "./puzzle";
 import { setupPwa } from "./pwa";
+import { isMastered, recordLegal, recordIllegal, recordPeek, markTested, masterySummary } from "./mastery";
+import { explainIllegal, rightShape, pieceName } from "./rules";
 import { startHeroDemo, revealOnScroll } from "./heroDemo";
 import {
   progress,
@@ -67,7 +69,7 @@ import "chessground/assets/chessground.cburnett.css";
 import "./style.css";
 
 type Color = "white" | "black";
-type Mode = "bot" | "puzzle" | "online";
+type Mode = "bot" | "puzzle" | "online" | "vision";
 type Opponent = "stockfish" | "magnus";
 
 const chess = new Chess();
@@ -128,7 +130,7 @@ const onlineCoachEl = el<HTMLDivElement>("online-coach");
 const onlineLinkEl = el<HTMLInputElement>("online-link");
 const puzzleTextEl = el<HTMLParagraphElement>("puzzle-text");
 
-const PANELS = ["play-panel", "tutorial-panel", "puzzle-panel", "online-panel", "review-panel"] as const;
+const PANELS = ["play-panel", "tutorial-panel", "puzzle-panel", "online-panel", "review-panel", "vision-panel"] as const;
 
 const TIPS = [
   "Control the centre: pawns in the middle give your pieces room.",
@@ -297,6 +299,7 @@ function renderPlayers(): void {
 function isOver(): boolean {
   if (mode === "online") return !!onlineState?.over;
   if (mode === "puzzle") return exDone;
+  if (mode === "vision") return false;
   return botResigned || chess.isGameOver();
 }
 
@@ -320,10 +323,11 @@ function render(): void {
     turnColor: turn,
     lastMove,
     check: inCheck ? turn : undefined,
-    // free/showDests reset explicitly: the piece tutorial's test phase changes both.
+    // Dots are decided per piece when one is picked up (onSelect). Games against people
+    // never show them. free/showDests are reset explicitly: the tutorial test changes both.
     movable: {
-      free: false,
-      showDests: true,
+      free: mode === "online",
+      showDests: mode !== "online",
       color: movable ? playerColor : undefined,
       dests: movable ? legalDests() : new Map(),
     },
@@ -331,6 +335,7 @@ function render(): void {
 
   if (mode === "online") updateOnlineUI();
   else if (mode === "puzzle") updatePuzzleStatus();
+  else if (mode === "vision") setBanner("Board vision");
   else updateStatus(inCheck);
   updateMoves();
   updateCaptured();
@@ -567,6 +572,7 @@ function onUserMove(orig: Key, dest: Key): void {
     return;
   }
 
+  if (rejectIllegal(orig, dest)) return;
   const fenBefore = chess.fen();
   const snapshot = beforeEval && beforeEval.fen === fenBefore ? beforeEval : null;
   if (isPromotion(orig as Square, dest as Square)) {
@@ -594,6 +600,7 @@ function applyUserMove(
     return;
   }
   const movedUci = (orig as string) + (dest as string) + (promotion ?? "");
+  noteLegal(move.piece);
   soundForMove(move);
   lastMove = [orig, dest];
   ground.setShapes([]);
@@ -870,6 +877,8 @@ function goHome(show = true): void {
   mode = "bot";
   ex = null;
   reviewState = null;
+  vision = null;
+  window.clearInterval(visionTick);
   if (show) showView("home");
 }
 
@@ -1084,6 +1093,7 @@ function updatePuzzleStatus(): void {
 }
 
 function handlePuzzleMove(orig: Key, dest: Key): void {
+  if (rejectIllegal(orig, dest)) return;
   if (isPromotion(orig as Square, dest as Square)) {
     void askPromotion(playerColor).then((p) => void exerciseTry(orig, dest, p));
   } else {
@@ -1531,6 +1541,16 @@ function renderPath(): void {
   const basics = unitEl("The pieces", "How every piece moves, one at a time.", piecesDone ? "Complete" : "");
   node(basics, "Learn the pieces", 1, piecesDone ? 3 : 0, startTutorial);
 
+  const visionStars = VISION_ORDER.reduce((a, t) => a + (p.lessons[`vision-${t}`] ?? 0), 0);
+  const visionNodes = unitEl(
+    "Board vision",
+    "No dots: tap every square a piece can reach. This is what lets you play on a real board.",
+    `${visionStars} / ${VISION_ORDER.length * 3} ★`,
+  );
+  VISION_ORDER.forEach((t, i) =>
+    node(visionNodes, cap(pieceName(t)), i + 1, p.lessons[`vision-${t}`] ?? 0, () => startVision(t)),
+  );
+
   for (const unit of UNITS) {
     const earned = unit.drills.reduce((a, d) => a + (p.lessons[d.id] ?? 0), 0);
     const nodes = unitEl(unit.title, unit.blurb, `${earned} / ${unit.drills.length * 3} ★`);
@@ -1613,6 +1633,13 @@ function renderDashboard(): void {
   tiles.push(`<div class="tile"><h3>Games</h3><div class="big">${games.length}</div><div class="note">${wins} won${games.length ? ` · ${Math.round((wins / games.length) * 100)}%` : ""}</div></div>`);
   tiles.push(`<div class="tile"><h3>Daily streak</h3><div class="big">🔥 ${streak}</div><div class="note">best ${loadStreak().best}</div></div>`);
   tiles.push(`<div class="tile"><h3>Lessons</h3><div class="big">${lessons.done}/${lessons.total}</div><div class="note">drills completed</div></div>`);
+  const ms = masterySummary();
+  const dotNames = ms.mastered.map((t) => pieceName(t));
+  tiles.push(
+    `<div class="tile span2"><h3>Playing without dots</h3><div class="big">${ms.mastered.length} / 6</div><div class="note">${
+      dotNames.length ? `No dots for your ${dotNames.join(", ")}.` : "Dots switch off piece by piece as you learn each one."
+    }</div></div>`,
+  );
   tiles.push(`<div class="tile span2"><h3>Your mistakes deck</h3><div class="big">${p.deck.length}</div><div class="note">${due} due now · ${learned} learned for good</div></div>`);
 
   if (games.length === 0 && p.puzzlesPlayed === 0) {
@@ -1940,6 +1967,7 @@ function applyOnlineMove(orig: Key, dest: Key, promotion: PromotionPiece | undef
     render();
     return;
   }
+  noteLegal(move.piece);
   soundForMove(move);
   lastMove = [orig, dest];
   render();
@@ -1947,6 +1975,7 @@ function applyOnlineMove(orig: Key, dest: Key, promotion: PromotionPiece | undef
 }
 
 function handleOnlineUserMove(orig: Key, dest: Key): void {
+  if (rejectIllegal(orig, dest)) return;
   if (isPromotion(orig as Square, dest as Square)) {
     void askPromotion(onlineColor === "black" ? "black" : "white").then((p) => applyOnlineMove(orig, dest, p));
   } else {
@@ -2083,6 +2112,230 @@ function leaveOnline(): void {
 
 // ---------- Init ----------
 
+// ---------- Move dots that fade as each piece is learned ----------
+
+/** An illegal try (possible when a piece's dots are off): explain it and snap back. */
+function rejectIllegal(orig: Key, dest: Key): boolean {
+  const why = explainIllegal(chess.fen(), orig, dest);
+  if (!why) return false;
+  const p = chess.get(orig as Square);
+  if (p) recordIllegal(p.type);
+  shakeBoard();
+  if (mode === "puzzle") puzzleTextEl.textContent = why;
+  else if (mode === "online") toast(why);
+  else {
+    feedbackActive = true;
+    coachEl.textContent = why;
+  }
+  render();
+  return true;
+}
+
+let peekTipShown = localStorageFlag("chronael.peekTip");
+
+/** A legal move: counts toward that piece's dots switching off. */
+function noteLegal(type: string): void {
+  if (!recordLegal(type)) return;
+  toast(`You know the ${pieceName(type)} now, so its move dots are off.`);
+  if (!peekTipShown) {
+    peekTipShown = true;
+    try {
+      localStorage.setItem("chronael.peekTip", "1");
+    } catch {
+      /* ignore */
+    }
+    window.setTimeout(() => toast("Stuck? Press and hold a piece to peek at its moves."), 2600);
+  }
+}
+
+/** Picking up a piece: dots only for pieces not yet learned (never against people). */
+function onSelect(key: Key): void {
+  if (tutorial.active) return;
+  if (mode === "vision") {
+    visionTap(key);
+    return;
+  }
+  if (mode === "online") return; // render() already set free movement, no dots
+  const p = chess.get(key as Square);
+  if (!p || (p.color === "w") !== (playerColor === "white")) return;
+  const learned = isMastered(p.type);
+  ground.set({ movable: { free: learned, showDests: !learned } });
+}
+
+/** Press and hold a learned piece to peek at its dots (not in games against people). */
+function setupPeek(boardEl: HTMLElement): void {
+  let timer = 0;
+  const cancel = () => window.clearTimeout(timer);
+  boardEl.addEventListener("pointerdown", () => {
+    cancel();
+    timer = window.setTimeout(() => {
+      if (mode === "online" || mode === "vision" || tutorial.active) return;
+      const sel = ground.state.selected;
+      const p = sel ? chess.get(sel as Square) : null;
+      if (!p || !isMastered(p.type)) return;
+      ground.set({ movable: { free: false, showDests: true } });
+      ground.redrawAll();
+      if (recordPeek(p.type)) toast(`Dots are back for the ${pieceName(p.type)} for a while. Keep practising!`);
+    }, 450);
+  });
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) boardEl.addEventListener(ev, cancel);
+}
+
+// ---------- Board vision drills: "tap every square the knight can reach" ----------
+
+const VISION_ORDER = ["n", "b", "r", "q", "k"] as const;
+
+interface Vision {
+  type: string;
+  from: string;
+  targets: Set<string>;
+  found: Set<string>;
+  wrong: number;
+  start: number;
+  done: boolean;
+}
+
+let vision: Vision | null = null;
+let visionTick = 0;
+
+function visionTargets(type: string, from: string): Set<string> {
+  const out = new Set<string>();
+  for (let f = 0; f < 8; f++) {
+    for (let r = 0; r < 8; r++) {
+      const sq = `${String.fromCharCode(97 + f)}${r + 1}`;
+      if (sq !== from && rightShape(type, true, from, sq, false)) {
+        // Castling-shaped king moves aren't real moves on an empty board.
+        if (type === "k" && Math.abs(sq.charCodeAt(0) - from.charCodeAt(0)) === 2) continue;
+        out.add(sq);
+      }
+    }
+  }
+  return out;
+}
+
+function startVision(type: string): void {
+  leaveOnline();
+  hideResult();
+  tutorial.active = false;
+  coachSeq++;
+  gameNo++;
+  mode = "vision";
+  showView("game");
+  showPanel("vision-panel");
+  // Pieces on the edge are too easy; pick a square away from it.
+  const f = 1 + Math.floor(Math.random() * 6);
+  const r = 1 + Math.floor(Math.random() * 6);
+  const from = `${String.fromCharCode(97 + f)}${r + 1}`;
+  vision = { type, from, targets: visionTargets(type, from), found: new Set(), wrong: 0, start: Date.now(), done: false };
+  const letter = type.toUpperCase();
+  const rows: string[] = [];
+  for (let rank = 7; rank >= 0; rank--) {
+    let row = "";
+    let empty = 0;
+    for (let file = 0; file < 8; file++) {
+      if (file === f && rank === r) {
+        if (empty) row += empty;
+        empty = 0;
+        row += letter;
+      } else empty++;
+    }
+    if (empty) row += empty;
+    rows.push(row);
+  }
+  playerColor = "white";
+  lastMove = undefined;
+  ground.set({
+    fen: rows.join("/"),
+    orientation: "white",
+    lastMove: undefined,
+    check: undefined,
+    movable: { free: false, color: undefined, dests: new Map() },
+  });
+  ground.setShapes([]);
+  const name = pieceName(type);
+  el("vision-meta").textContent = `Board vision · ${VISION_ORDER.indexOf(type as never) + 1} of ${VISION_ORDER.length}`;
+  el("vision-title").textContent = `Where can the ${name} go?`;
+  const text = el("vision-text");
+  text.classList.remove("bad");
+  text.textContent = `Tap every square the ${name} can reach in one move. No dots, just your eyes.`;
+  setPlayer("bottom", savedName() || "You", "Board vision");
+  setPlayer("top", "Drill", `${vision.targets.size} squares to find`);
+  capYoursEl.textContent = "";
+  capTheirsEl.textContent = "";
+  setBanner("Board vision");
+  el<HTMLButtonElement>("vision-next").textContent =
+    type === VISION_ORDER[VISION_ORDER.length - 1] ? "Back to lessons" : "Next piece";
+  updateVisionScore();
+  window.clearInterval(visionTick);
+  visionTick = window.setInterval(updateVisionScore, 1000);
+}
+
+function updateVisionScore(): void {
+  if (!vision) return;
+  el("vision-found").textContent = `${vision.found.size} / ${vision.targets.size} found`;
+  if (!vision.done) el("vision-time").textContent = `${Math.round((Date.now() - vision.start) / 1000)}s`;
+}
+
+function drawVision(extra: { orig: Key; brush: string }[] = []): void {
+  if (!vision) return;
+  ground.setShapes([...[...vision.found].map((sq) => ({ orig: sq as Key, brush: "green" })), ...extra]);
+}
+
+function visionTap(key: Key): void {
+  const v = vision;
+  if (!v || v.done || key === v.from) return;
+  window.setTimeout(() => ground.selectSquare(null), 0); // after Chessground finishes this click
+  const text = el("vision-text");
+  if (v.targets.has(key)) {
+    if (v.found.has(key)) return;
+    v.found.add(key);
+    playMove();
+    text.classList.remove("bad");
+    drawVision();
+  } else {
+    v.wrong++;
+    text.classList.add("bad");
+    text.textContent = `Not that one. ${
+      {
+        n: "A knight moves in an L: two squares one way, then one to the side.",
+        b: "A bishop only moves diagonally.",
+        r: "A rook moves along its row or its column.",
+        q: "The queen moves along rows, columns and diagonals.",
+        k: "The king moves just one square in any direction.",
+      }[v.type as "n"] ?? ""
+    }`;
+    drawVision([{ orig: key, brush: "red" }]);
+    window.setTimeout(() => {
+      if (vision === v && !v.done) drawVision();
+    }, 700);
+  }
+  updateVisionScore();
+  if (v.found.size === v.targets.size) finishVision();
+}
+
+function finishVision(): void {
+  const v = vision;
+  if (!v) return;
+  v.done = true;
+  window.clearInterval(visionTick);
+  const secs = Math.round((Date.now() - v.start) / 1000);
+  const stars = v.wrong === 0 ? (secs <= 20 ? 3 : 2) : v.wrong <= 2 ? 2 : 1;
+  setLessonStars(`vision-${v.type}`, stars);
+  if (v.wrong <= 1) markTested(v.type); // clear board vision = this piece's dots can go
+  const text = el("vision-text");
+  text.classList.remove("bad");
+  text.textContent = `All ${v.targets.size} found in ${secs}s${v.wrong ? ` with ${v.wrong} wrong tap${v.wrong === 1 ? "" : "s"}` : ", no mistakes"}. ${"★".repeat(stars)}${"☆".repeat(3 - stars)}`;
+  updateVisionScore();
+}
+
+function visionNext(): void {
+  if (!vision) return;
+  const i = VISION_ORDER.indexOf(vision.type as never);
+  const next = VISION_ORDER[i + 1];
+  if (next) startVision(next);
+  else openLessons();
+}
+
 function init(): void {
   // Views are swapped in place, so the browser restoring an old scroll offset lands mid-page.
   if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
@@ -2091,6 +2344,7 @@ function init(): void {
     orientation: playerColor,
     turnColor: colorToMove(),
     movable: { free: false, color: undefined, dests: new Map(), showDests: true, events: { after: onUserMove } },
+    events: { select: onSelect },
     animation: { enabled: !reducedMotion(), duration: 200 },
     highlight: { lastMove: true, check: true },
     draggable: { enabled: true, showGhost: true },
@@ -2098,6 +2352,7 @@ function init(): void {
     coordinates: true, // built once; shown/hidden via the .coords-on CSS class
   };
   ground = Chessground(el<HTMLDivElement>("board"), config);
+  setupPeek(el("board"));
   // The board's size follows the screen on phones; re-measure on rotate or resize.
   let resizeRaf = 0;
   window.addEventListener("resize", () => {
@@ -2175,6 +2430,9 @@ function init(): void {
 
   // Tutorial.
   el("tut-exit").addEventListener("click", () => tutorial.exit());
+  el("vision-again").addEventListener("click", () => vision && startVision(vision.type));
+  el("vision-next").addEventListener("click", visionNext);
+  el("vision-exit").addEventListener("click", openLessons);
 
   // Puzzle.
   el("puzzle-hint").addEventListener("click", puzzleHint);

@@ -56,6 +56,18 @@ browser (Vite + TS)
   - **Abandonment.** When a player has been away 60 s, the opponent may claim the win.
   - **Waiting.** After 20 s of waiting, the inviter is offered the bot while the link
     keeps working.
+- **Move dots fade out** (`src/mastery.ts`, `src/rules.ts`). The goal is that learners
+  can play on a real board.
+  - **Mastery.** A piece is mastered once its no-dots tutorial test is passed, after a
+    clean board-vision drill, or after 15 legal moves with it. Illegal tries subtract 3.
+  - **After mastery.** Picking the piece up shows no dots and allows free dragging.
+    Illegal tries are explained by `explainIllegal()`: wrong shape, blocked path, your
+    own piece, or king safety.
+  - **Peek.** Press and hold to see the dots. Five peeks at a mastered piece bring its
+    dots back for a while.
+  - **Against people.** Online games never show dots.
+  - **Board vision drills.** A lesson unit asks you to "tap every square the knight can
+    reach".
 - **Quick match** (`Lobby` Durable Object at `/lobby`, `quickMatch()` in `src/online.ts`).
   - **Pairing.** Anyone looking for a game opens a WebSocket to the lobby. If someone is
     already waiting, both get the same new room id and join it as a normal online game.

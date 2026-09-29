@@ -572,6 +572,11 @@ button { font-family: inherit; }
 @keyframes pop { from { transform: scale(0); } }
 #puzzle-next { margin-top: 10px; }
 
+/* ---------- Board vision ---------- */
+.vision-score { display: flex; justify-content: space-between; font-weight: 700; color: var(--green); background: var(--green-soft); border-radius: 10px; padding: 8px 12px; }
+#vision-text { transition: color 0.2s; }
+#vision-text.bad { color: var(--red); }
+
 /* ---------- Review ---------- */
 .review-head { display: flex; align-items: center; gap: 16px; margin: 10px 0 8px; }
 .acc-ring {
@@ -720,6 +725,17 @@ button { font-family: inherit; }
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); background: var(--cream); border-top: 1px solid var(--line);
   }
   .game:has(#tutorial-panel:not([hidden])) { padding-bottom: 190px; }
+  #vision-panel #vision-text {
+    position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 40; margin: 0;
+    border-radius: 14px 14px 0 0; background: var(--paper); border: 1px solid var(--line); border-left: 3px solid var(--gold);
+    padding: 10px 12px; box-shadow: 0 -6px 24px rgba(35, 45, 39, 0.16); font-weight: 600;
+  }
+  #vision-panel .btn-row {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; margin: 0;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); background: var(--cream); border-top: 1px solid var(--line);
+  }
+  .game:has(#vision-panel:not([hidden])) { padding-bottom: 170px; }
+  .game:has(#vision-panel:not([hidden])) .board-col { max-width: max(260px, calc(100svh - 400px)); }
   .game:has(#tutorial-panel:not([hidden])) .board-col { max-width: max(260px, calc(100svh - 420px)); }
   .site-footer { padding-bottom: 24px; }
 }

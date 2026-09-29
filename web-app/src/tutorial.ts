@@ -8,6 +8,8 @@ import type { Key } from "chessground/types";
 import { Chess, type Square } from "chess.js";
 
 import { playMove, playCapture } from "./sound";
+import { markTested } from "./mastery";
+import { explainIllegal } from "./rules";
 
 interface Test {
   fen: string;
@@ -311,7 +313,7 @@ export class PieceTutorial {
       moved = null;
     }
     if (!moved) {
-      this.dom.hint.textContent = `Not quite. ${lesson.rule}`;
+      this.dom.hint.textContent = explainIllegal(this.chess.fen(), orig, dest) ?? `Not quite. ${lesson.rule}`;
       this.renderTest();
       return;
     }
@@ -322,6 +324,7 @@ export class PieceTutorial {
     if (this.square === lesson.test.target) {
       this.phase = "passed";
       this.passed.add(this.idx);
+      markTested(lesson.piece === "knight" ? "n" : lesson.piece[0]); // its move dots switch off in games
       this.label("Test passed ✓");
       this.dom.hint.textContent =
         this.idx === LESSONS.length - 1
