@@ -80,16 +80,21 @@
           </div>
           <div class="quick-settings" aria-label="Game settings">
             <label class="qs-level">
-              <span>Level</span>
+              <span>Opponent</span>
               <select id="level">
-                <option value="0">1 · Gentle start</option>
-                <option value="1">2 · Very easy</option>
-                <option value="2" selected>3 · Easy</option>
-                <option value="3">4 · Casual</option>
-                <option value="4">5 · Improving</option>
-                <option value="5">6 · Club</option>
-                <option value="6">7 · Strong</option>
-                <option value="7">8 · Toughest</option>
+                <optgroup label="Gentle coach bot">
+                  <option value="0">Coach bot · 1 Gentle</option>
+                  <option value="1">Coach bot · 2 Very easy</option>
+                  <option value="2" selected>Coach bot · 3 Easy</option>
+                  <option value="3">Coach bot · 4 Casual</option>
+                  <option value="4">Coach bot · 5 Improving</option>
+                  <option value="5">Coach bot · 6 Club</option>
+                  <option value="6">Coach bot · 7 Strong</option>
+                  <option value="7">Coach bot · 8 Toughest</option>
+                </optgroup>
+                <optgroup label="Challenge">
+                  <option value="magnus">♚ Magnus bot (AI)</option>
+                </optgroup>
               </select>
             </label>
             <fieldset class="seg seg-sm" aria-label="Play as">

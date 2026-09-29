@@ -728,7 +728,7 @@ button { font-family: inherit; }
 html, body { max-width: 100%; overflow-x: clip; }
 @media (max-width: 560px) {
   /* First screen on a phone: headline, one line, two buttons, then the demo. */
-  .home { grid-template-areas: "hero" "demo" "rows"; }
+  .home { grid-template-areas: "hero" "demo" "rows"; grid-template-columns: minmax(0, 1fr); }
   .sub-long, .hero-points { display: none; }
   .sub-short { display: inline; }
   .hero { padding-top: 0; }
@@ -742,8 +742,10 @@ html, body { max-width: 100%; overflow-x: clip; }
   .hero-online .pill-btn { flex: 1 1 0; justify-content: center; }
   .quick-settings { gap: 6px; margin: 0 0 12px; flex-wrap: nowrap; }
   .qs-level span, .seg-sm legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .qs-level select { padding: 6px 8px; min-height: 36px; font-size: 0.85rem; max-width: 118px; }
-  .seg-sm span { padding: 7px 10px; font-size: 0.82rem; }
+  .qs-level { flex: 1 1 auto; min-width: 0; }
+  .qs-level select { padding: 6px 8px; min-height: 36px; font-size: 0.85rem; width: 100%; min-width: 0; }
+  .seg-sm { flex: 0 0 auto; }
+  .seg-sm span { padding: 7px 9px; font-size: 0.82rem; }
   .home { row-gap: 14px; }
   .continue { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 4px -16px 6px; padding: 0 16px; }
   .continue-label { flex: 0 0 auto; font-size: 0.8rem; }
@@ -754,7 +756,7 @@ html, body { max-width: 100%; overflow-x: clip; }
   .demo-bubble { margin: 0 0 12px; padding: 9px 13px; min-height: 92px; border-radius: 16px; }
   .demo-bubble p { font-size: 0.88rem; line-height: 1.4; margin-top: 4px; }
   /* Board size follows screen height too, so the whole demo fits on the first screen. */
-  .demo-frame { width: min(280px, calc(100svh - 520px)); min-width: 200px; padding: 8px; }
+  .demo-frame { width: min(280px, calc(100svh - 540px)); min-width: 200px; padding: 8px; }
   .demo-dots { margin-top: 10px; }
   .topbar { padding: 12px 14px 4px; }
   .brand { font-size: 1.35rem; }

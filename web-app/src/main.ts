@@ -835,7 +835,8 @@ function startBot(opp: Opponent = "stockfish"): void {
   if (tutorial.active) tutorial.active = false;
   hideResult();
   playerColor = pickSide();
-  levelIndex = parseInt(el<HTMLSelectElement>("level").value, 10);
+  const lv = parseInt(el<HTMLSelectElement>("level").value, 10);
+  if (Number.isFinite(lv)) levelIndex = lv; // "magnus" keeps the last coach level
   showView("game");
   showPanel("play-panel");
   opponent = opp;
@@ -2123,7 +2124,14 @@ function init(): void {
 
   // Home.
   el("brand").addEventListener("click", () => goHome());
-  el("hero-play").addEventListener("click", () => startBot());
+  // One dropdown picks the opponent: the coach bot at a level, or the Magnus bot.
+  const levelSel = el<HTMLSelectElement>("level");
+  const reflectOpponent = () => {
+    el("hero-play").textContent = levelSel.value === "magnus" ? "Play Magnus" : "Play now";
+  };
+  levelSel.addEventListener("change", reflectOpponent);
+  reflectOpponent();
+  el("hero-play").addEventListener("click", () => startBot(levelSel.value === "magnus" ? "magnus" : "stockfish"));
   el("hero-learn").addEventListener("click", startTutorial);
   el("hero-quick").addEventListener("click", () => withName(startQuickMatch));
   el("hero-friend").addEventListener("click", () => withName(createOnlineGame));

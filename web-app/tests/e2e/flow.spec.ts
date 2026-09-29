@@ -169,3 +169,12 @@ test("game fits the window: your player row is visible without scrolling", async
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(page.locator("#row-bottom")).toBeInViewport({ ratio: 1 });
 });
+
+test("the opponent picker offers the Magnus bot next to Play now", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#level option[value='magnus']")).toHaveCount(1);
+  await page.locator("#level").selectOption("magnus");
+  await expect(page.locator("#hero-play")).toHaveText("Play Magnus");
+  await page.locator("#hero-play").click();
+  await expect(page.locator("#name-top")).toHaveText("Magnus bot");
+});
