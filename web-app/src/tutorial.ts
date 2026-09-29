@@ -106,6 +106,11 @@ export class PieceTutorial {
     const next = this.idx + delta;
     if (next < 0) return;
     if (next >= LESSONS.length) {
+      try {
+        localStorage.setItem("chronael.piecesDone", "1"); // ticks the first node of the lesson path
+      } catch {
+        /* ignore */
+      }
       this.exit();
       return;
     }

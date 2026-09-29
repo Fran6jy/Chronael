@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 /** Click the centre of a square on the (white-oriented) board. */
 async function clickSquare(page: Page, sq: string): Promise<void> {
+  await page.locator("#board").scrollIntoViewIfNeeded();
   const box = (await page.locator("#board cg-board").boundingBox())!;
   const file = sq.charCodeAt(0) - 97;
   const rank = Number(sq[1]);
@@ -20,6 +21,8 @@ test("home → tutorial → game → promotion", async ({ page }) => {
 
   // Tutorial: first lesson is the pawn; moving it is praised.
   await page.locator("#card-learn").click();
+  await expect(page.locator("#lessons")).toBeVisible();
+  await page.getByRole("button", { name: "Learn the pieces" }).click();
   await expect(page.locator("#tut-title")).toHaveText("The Pawn");
   await clickSquare(page, "e3"); // the pawn starts selected with its dots showing
   await expect(page.locator("#tut-hint")).toContainText("legal");
@@ -62,4 +65,24 @@ test("PWA assets and version endpoint are served", async ({ request }) => {
   expect((await version.json()).build).toBeTruthy();
   expect((await request.get("/sw.js")).ok()).toBeTruthy();
   expect((await request.get("/og.png")).ok()).toBeTruthy();
+});
+
+test("lesson drill: solve, earn stars, move on", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#nav-lessons").click();
+  await page.getByRole("button", { name: "Back-rank mate" }).click();
+  await expect(page.locator("#puzzle-goal")).toContainText("Back-rank mate");
+  await move(page, "a1", "a8");
+  await expect(page.locator("#ex-stars span:not(.off)")).toHaveCount(3);
+  await page.locator("#puzzle-next").click();
+  await expect(page.locator("#puzzle-goal")).toContainText("Queen and king");
+  await page.locator("#nav-progress").click();
+  await expect(page.locator("#dash")).toContainText("Lessons");
+});
+
+test("rated puzzles load and show the rating", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#card-rated").click();
+  await expect(page.locator("#puzzle-meta")).toContainText("Rated puzzle");
+  await expect(page.locator("#ex-rating")).toHaveText("800");
 });

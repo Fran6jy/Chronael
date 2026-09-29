@@ -45,6 +45,8 @@
       </button>
       <nav class="topnav" aria-label="Main">
         <button id="install" type="button" class="chip" hidden>Install app</button>
+        <button id="nav-lessons" type="button" class="chip nav-chip">Lessons</button>
+        <button id="nav-progress" type="button" class="chip nav-chip">Progress</button>
         <button id="mute" type="button" class="icon-btn" aria-pressed="false" aria-label="Mute sounds" title="Sound on/off">
           <svg class="mute-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
           <svg class="mute-off" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>
@@ -103,10 +105,23 @@
           <h2 class="rows-title">Ways to play</h2>
           <div class="cards">
             <button id="card-learn" type="button" class="home-card featured">
-              <span class="card-kicker">New to chess?</span>
-              <span class="card-title">Learn the pieces</span>
-              <span class="card-sub">Six short lessons. Move each piece yourself and see where it can go.</span>
-              <span class="card-cta">Start lesson →</span>
+              <span class="card-kicker">Your learning path</span>
+              <span class="card-title" id="path-card-title">Lessons</span>
+              <span class="card-sub" id="path-card-sub">From how the pieces move to checkmates, tactics, openings and endgames.</span>
+              <span class="meter" aria-hidden="true"><span id="path-meter"></span></span>
+              <span class="card-cta">Open the path →</span>
+            </button>
+            <button id="card-mistakes" type="button" class="home-card">
+              <span class="card-kicker">Your mistakes <span id="due-badge" class="streak" hidden></span></span>
+              <span class="card-title">Learn from your games</span>
+              <span class="card-sub" id="mistakes-card-sub">Positions where you slipped come back as puzzles, spaced out so they stick.</span>
+              <span class="card-cta">Review →</span>
+            </button>
+            <button id="card-rated" type="button" class="home-card">
+              <span class="card-kicker">Rated puzzles</span>
+              <span class="card-title" id="rated-card-title">Puzzle rating 800</span>
+              <span class="card-sub">Puzzles that adapt to you, from beginner to 2500. Get one right and they get harder.</span>
+              <span class="card-cta">Train →</span>
             </button>
             <button id="card-puzzle" type="button" class="home-card">
               <span class="card-kicker">Daily puzzle <span id="streak-badge" class="streak" hidden></span></span>
@@ -126,8 +141,29 @@
               <span class="card-sub">A neural net trained on Magnus Carlsen’s games. It plays like him 27% of the time.</span>
               <span class="card-cta">Face it →</span>
             </button>
+            <button id="card-progress" type="button" class="home-card wide">
+              <span class="card-kicker">Progress</span>
+              <span class="card-title">How you’re improving</span>
+              <span class="card-sub" id="progress-card-sub">Accuracy, blunders per game, puzzle rating and more, all in one place.</span>
+              <span class="card-cta">See your progress →</span>
+            </button>
           </div>
         </div>
+      </section>
+
+      <!-- ================= LESSON PATH ================= -->
+      <section id="lessons" class="page" hidden aria-labelledby="lessons-title">
+        <p class="eyebrow">Your learning path</p>
+        <h1 id="lessons-title" class="page-title">Lessons</h1>
+        <p class="page-sub">Short, hands-on drills. Earn up to three stars on each: solve it with no wrong moves and no hints.</p>
+        <div id="path" class="path"></div>
+      </section>
+
+      <!-- ================= PROGRESS ================= -->
+      <section id="progress" class="page" hidden aria-labelledby="progress-title">
+        <p class="eyebrow">Progress</p>
+        <h1 id="progress-title" class="page-title">How you’re improving</h1>
+        <div id="dash" class="dash"></div>
       </section>
 
       <!-- ================= GAME ================= -->
@@ -225,12 +261,44 @@
             <div class="tut-progress" id="puzzle-meta">Daily puzzle</div>
             <h2 class="tut-title" id="puzzle-goal">Find the best move</h2>
             <p class="tut-text" id="puzzle-text">Your opponent just moved (highlighted). Your turn.</p>
-            <div class="streak-row"><span class="streak-flame" aria-hidden="true">🔥</span><span id="puzzle-streak">No streak yet</span></div>
+            <div class="streak-row" id="puzzle-streak-row"><span class="streak-flame" aria-hidden="true">🔥</span><span id="puzzle-streak">No streak yet</span></div>
+            <div class="rating-row" id="ex-rating-row" hidden>
+              <span>Your puzzle rating</span><strong id="ex-rating">800</strong><span id="ex-delta" class="delta"></span>
+            </div>
+            <div id="ex-stars" class="stars" hidden aria-label="Stars earned"></div>
             <div class="btn-row">
               <button id="puzzle-hint" type="button" class="btn">Hint</button>
               <button id="puzzle-reveal" type="button" class="btn">Show solution</button>
             </div>
+            <button id="puzzle-next" type="button" class="btn btn-primary full" hidden>Next</button>
             <button id="puzzle-exit" type="button" class="btn btn-quiet full">Back home</button>
+          </section>
+
+          <!-- GAME REVIEW -->
+          <section id="review-panel" class="side-card" hidden>
+            <div class="tut-progress">Game review</div>
+            <div class="review-head">
+              <div class="acc-ring" id="acc-ring" style="--p: 0"><span id="acc-num">–</span><small>accuracy</small></div>
+              <ul class="count-chips" id="count-chips"></ul>
+            </div>
+            <p class="small muted">Every move you played. Tap one to see what happened.</p>
+            <div id="review-strip" class="review-strip" role="list"></div>
+            <div class="moment">
+              <div class="moment-head">
+                <span id="moment-label" class="tut-progress">Key moment</span>
+                <span class="moment-nav">
+                  <button id="moment-prev" type="button" class="icon-btn small-btn" aria-label="Previous key moment">‹</button>
+                  <button id="moment-next" type="button" class="icon-btn small-btn" aria-label="Next key moment">›</button>
+                </span>
+              </div>
+              <p id="review-text" class="review-text" aria-live="polite"></p>
+              <p class="legend small"><span class="lg red"></span> your move <span class="lg green"></span> better move</p>
+            </div>
+            <button id="review-try" type="button" class="btn btn-primary full">Find the better move yourself</button>
+            <div class="btn-row">
+              <button id="review-again" type="button" class="btn">New game</button>
+              <button id="review-exit" type="button" class="btn btn-quiet">Home</button>
+            </div>
           </section>
 
           <!-- ONLINE -->
@@ -291,6 +359,8 @@
         <p id="result-sub" class="result-sub"></p>
         <div class="modal-actions">
           <button id="result-primary" type="button" class="btn btn-primary btn-lg">Play again</button>
+          <button id="result-review" type="button" class="btn btn-gold" hidden>Review this game</button>
+          <button id="result-alt" type="button" class="btn" hidden>Play again</button>
           <button id="result-share" type="button" class="btn">Share</button>
           <button id="result-home" type="button" class="btn btn-quiet">Home</button>
         </div>

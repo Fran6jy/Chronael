@@ -42,7 +42,7 @@ describe("describeMove never leaks notation", () => {
 
 describe("tier0Message", () => {
   it("adds the better idea only for mistakes and blunders", () => {
-    expect(tier0Message("blunder", "move the knight")).toContain("A stronger idea was to move the knight");
+    expect(tier0Message("blunder", "move the knight")).toContain("A stronger idea: move the knight");
     expect(tier0Message("good", "move the knight")).not.toContain("stronger");
   });
 });

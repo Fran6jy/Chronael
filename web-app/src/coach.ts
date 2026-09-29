@@ -82,7 +82,7 @@ const TIER0: Record<MoveRating, string> = {
 export function tier0Message(rating: MoveRating, bestPlain?: string): string {
   const base = TIER0[rating];
   if ((rating === "mistake" || rating === "blunder") && bestPlain) {
-    return `${base} A stronger idea was to ${bestPlain}.`;
+    return `${base} A stronger idea: ${bestPlain}.`;
   }
   return base;
 }

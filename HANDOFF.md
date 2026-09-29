@@ -57,6 +57,24 @@ browser (Vite + TS)
   puzzles rated 487–1299 across 9 themes. The day's puzzle is picked by date, so
   everyone gets the same one. The streak lives in localStorage under `chronael.puzzle`.
   Any mate counts as a correct answer.
+- **Learning loop** (`src/progress.ts`, `src/lessons.ts`), all stored in localStorage
+  under `chronael.progress`, with no account needed.
+  - **Game review.** Every move in a bot game is logged with Stockfish's eval before and
+    after it. After a game you see an accuracy score, a colour-coded strip of every move,
+    and the 3 biggest swings, each with red and green arrows, a coach explanation and
+    "find the better move yourself".
+  - **Your mistakes.** Every mistake or blunder is saved as a card and re-served with
+    spaced repetition (Leitner boxes: 0, 1, 3, 7, 14, 30 and 60 days). A move within
+    40 cp of best also counts as correct.
+  - **Lesson path.** Learn the pieces, then 4 units and 15 hand-made drills, with 1–3
+    stars each. `tests/e2e/lessons.spec.ts` checks every accepted answer against the
+    app's own Stockfish.
+  - **Rated puzzles.** `public/puzzles-rated.json` holds 3,058 Lichess CC0 puzzles rated
+    528–2500, built by `scripts/make_rated_puzzles.py`. The learner has an Elo-style
+    puzzle rating that moves faster while provisional; a wrong first move counts as a loss.
+  - **Bot levels.** A win offers "Level up".
+  - **Dashboard.** It shows the puzzle rating chart, accuracy per game, the blunders-per-game
+    trend, the win record by opponent, and plain-English "what to work on" tips.
 - **PWA** (`public/sw.js`, `public/manifest.webmanifest`, `src/pwa.ts`).
   - **Caching.** Pages are network-first so deploys show up; assets are cache-first;
     `/api` and `version.json` are never cached.
