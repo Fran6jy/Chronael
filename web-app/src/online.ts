@@ -24,7 +24,7 @@ export interface OnlineState {
   whitePresent: boolean;
   blackPresent: boolean;
   players: Record<Seat, PlayerView>;
-  status: "waiting" | "active" | "checkmate" | "stalemate" | "draw" | "resigned" | "agreed" | "abandoned";
+  status: "waiting" | "active" | "checkmate" | "stalemate" | "draw" | "resigned" | "agreed" | "abandoned" | "timeout";
   winner: Seat | null;
   over: boolean;
   result: string | null;
@@ -34,6 +34,9 @@ export interface OnlineState {
   spectators: number;
   game: number;
   abandonMs: number;
+  turnDeadline: number | null; // server epoch ms by which the side to move must move
+  moveMs: number;
+  serverNow: number; // server clock when this state was sent (to correct for skew)
 }
 
 // In dev, `wrangler dev` serves the Worker on 127.0.0.1:8787. In production set

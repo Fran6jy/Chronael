@@ -212,6 +212,8 @@ button { font-family: inherit; }
 .turn-banner.turn-white .turn-dot { background: #fff; }
 .turn-banner.turn-black .turn-dot { background: var(--ink); }
 .turn-banner.is-you { background: var(--green); color: #fff; border-color: var(--green); }
+.turn-banner.hurry { background: #b0453a; border-color: #b0453a; color: #fff; animation: hurry 1s ease-in-out infinite; }
+@keyframes hurry { 50% { box-shadow: 0 0 0 5px rgba(176, 69, 58, 0.18); } }
 .turn-banner.is-over { background: var(--gold-soft); border-color: var(--gold); color: #6d4a1b; }
 
 .player-row {
@@ -648,7 +650,7 @@ button { font-family: inherit; }
    screen, so there's no scrolling below the board to find Hint or Take back. */
 @media (max-width: 720px) {
   #play-panel .coach-box {
-    position: fixed; left: 10px; right: 10px; bottom: calc(62px + env(safe-area-inset-bottom)); z-index: 40; margin: 0;
+    position: fixed; left: 10px; right: 10px; bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 40; margin: 0;
     max-height: 30vh; overflow-y: auto; background: var(--paper); box-shadow: 0 -6px 24px rgba(35, 45, 39, 0.16);
     padding: 10px 12px;
   }
@@ -674,11 +676,22 @@ button { font-family: inherit; }
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); background: var(--cream); border-top: 1px solid var(--line);
   }
   #puzzle-panel #puzzle-text {
-    position: fixed; left: 10px; right: 10px; bottom: calc(62px + env(safe-area-inset-bottom)); z-index: 40; margin: 0;
+    position: fixed; left: 10px; right: 10px; bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 40; margin: 0;
     background: var(--paper); border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 12px;
     padding: 10px 12px; box-shadow: 0 -6px 24px rgba(35, 45, 39, 0.16); max-height: 30vh; overflow-y: auto; font-size: 0.92rem;
   }
   .game:has(#puzzle-panel:not([hidden])) { padding-bottom: 200px; }
+  #tutorial-panel .tut-hint {
+    position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 40; margin: 0;
+    border-radius: 14px 14px 0 0; background: var(--paper); border: 1px solid var(--line); border-left: 3px solid var(--gold);
+    box-shadow: 0 -6px 24px rgba(35, 45, 39, 0.16); font-weight: 600; color: var(--ink); max-height: 30vh; overflow-y: auto;
+  }
+  #tutorial-panel .btn-row {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; margin: 0;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); background: var(--cream); border-top: 1px solid var(--line);
+  }
+  .game:has(#tutorial-panel:not([hidden])) { padding-bottom: 190px; }
+  .game:has(#tutorial-panel:not([hidden])) .board-col { max-width: max(260px, calc(100svh - 420px)); }
   .site-footer { padding-bottom: 24px; }
 }
 

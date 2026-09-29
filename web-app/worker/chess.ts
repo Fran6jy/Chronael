@@ -9,6 +9,8 @@
 //  - Every move is validated with chess.js; illegal and out-of-turn moves are ignored.
 //  - Resign, draw offers (with a cooldown after a decline), rematch votes (colours swap),
 //    presence, and claiming the win when the opponent has been gone for a minute.
+//  - A move timer: whoever is to move has 60 seconds, enforced by a Durable Object alarm
+//    (so it fires even if nobody is connected); running out loses the game.
 //  - State is persisted to Durable Object storage, so a game survives restarts and
 //    long gaps (both players can close their tabs and come back later).
 //
@@ -26,9 +28,19 @@ export interface Env {
 
 type Seat = "white" | "black";
 type Role = Seat | "spectator";
-type Status = "waiting" | "active" | "checkmate" | "stalemate" | "draw" | "resigned" | "agreed" | "abandoned";
+type Status =
+  | "waiting"
+  | "active"
+  | "checkmate"
+  | "stalemate"
+  | "draw"
+  | "resigned"
+  | "agreed"
+  | "abandoned"
+  | "timeout";
 
 const ABANDON_MS = 60_000; // opponent must be gone this long before you can claim the win
+const MOVE_MS = 60_000; // time allowed for each move; running out loses
 const DRAW_GAP_PLIES = 6; // after a declined offer, wait this many plies before offering again
 const MAX_MSGS_PER_10S = 40;
 
@@ -92,6 +104,7 @@ interface Snapshot {
   drawBlockedUntil: Partial<Record<Seat, number>>;
   rematch: Partial<Record<Seat, boolean>>;
   game: number;
+  turnDeadline?: number | null; // epoch ms by which the side to move must move
 }
 
 interface Conn {
@@ -166,6 +179,7 @@ export class ChessRoom {
       if (name) info.name = name;
       if (this.snap.status === "waiting" && this.snap.seats.white && this.snap.seats.black) {
         this.snap.status = "active";
+        await this.armClock();
       }
     }
 
@@ -251,6 +265,7 @@ export class ChessRoom {
         } catch {
           return; // illegal
         }
+        await this.armClock();
         break;
       }
       case "resign": {
@@ -316,6 +331,7 @@ export class ChessRoom {
             rematch: {},
             game: this.snap.game + 1,
           };
+          await this.armClock();
           // Tell each socket its (new) colour.
           for (const [sock, c] of this.conns) {
             try {
@@ -333,9 +349,38 @@ export class ChessRoom {
     }
 
     if (changed) {
+      if (this.isOver() && this.snap.turnDeadline) await this.armClock();
       await this.save();
       this.broadcast();
     }
+  }
+
+  /** Start (or stop) the move clock for whoever is to move now. */
+  private async armClock(): Promise<void> {
+    if (this.snap.status === "active") {
+      this.snap.turnDeadline = Date.now() + MOVE_MS;
+      await this.state.storage.setAlarm(this.snap.turnDeadline);
+    } else {
+      this.snap.turnDeadline = null;
+      await this.state.storage.deleteAlarm();
+    }
+  }
+
+  /** The move clock ran out: the side to move loses on time. */
+  async alarm(): Promise<void> {
+    const deadline = this.snap.turnDeadline;
+    if (this.snap.status !== "active" || !deadline) return;
+    if (Date.now() < deadline - 250) {
+      await this.state.storage.setAlarm(deadline); // woke early; try again
+      return;
+    }
+    const loser: Seat = this.chess.turn() === "w" ? "white" : "black";
+    this.snap.status = "timeout";
+    this.snap.winner = this.other(loser);
+    this.snap.drawOffer = null;
+    this.snap.turnDeadline = null;
+    await this.save();
+    this.broadcast();
   }
 
   private onClose(ws: WebSocket): void {
@@ -389,6 +434,9 @@ export class ChessRoom {
       spectators,
       game: this.snap.game,
       abandonMs: ABANDON_MS,
+      turnDeadline: this.snap.turnDeadline ?? null,
+      moveMs: MOVE_MS,
+      serverNow: now,
     };
   }
 

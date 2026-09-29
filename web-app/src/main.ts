@@ -320,7 +320,13 @@ function render(): void {
     turnColor: turn,
     lastMove,
     check: inCheck ? turn : undefined,
-    movable: { color: movable ? playerColor : undefined, dests: movable ? legalDests() : new Map() },
+    // free/showDests reset explicitly: the piece tutorial's test phase changes both.
+    movable: {
+      free: false,
+      showDests: true,
+      color: movable ? playerColor : undefined,
+      dests: movable ? legalDests() : new Map(),
+    },
   });
 
   if (mode === "online") updateOnlineUI();
@@ -1801,6 +1807,13 @@ function showOnlineResult(s: OnlineState): void {
       title = me === "spectator" ? `${winnerName} wins` : kind === "win" ? "You won!" : "You resigned";
       sub = kind === "win" ? `${opp ? seatName(opp) : "Your opponent"} resigned.` : "Good game.";
       break;
+    case "timeout":
+      title = me === "spectator" ? `${winnerName} wins on time` : kind === "win" ? "You won on time" : "Out of time";
+      sub =
+        kind === "win"
+          ? `${opp ? seatName(opp) : "Your opponent"} didn't move within a minute.`
+          : "Each move has a one-minute limit in games against people.";
+      break;
     case "abandoned":
       title = kind === "win" ? "You won!" : "Game abandoned";
       sub = "Your opponent left the game.";
@@ -1888,11 +1901,18 @@ function updateOnlineUI(): void {
   spec.textContent = `${s.spectators} watching`;
 
   const inCheck = chess.isCheck();
+  // Move clock: the server's deadline, corrected for the gap between server and device clocks.
+  const left =
+    s.status === "active" && s.turnDeadline
+      ? Math.max(0, Math.ceil((s.turnDeadline - (s.serverNow + (Date.now() - onlineStateAt))) / 1000))
+      : null;
+  const clock = left === null ? "" : ` · 0:${String(left).padStart(2, "0")}`;
   if (s.over) setBanner(s.result ? `Game over · ${s.result}` : "Game over");
   else if (waiting) setBanner("Waiting for your friend to join…");
-  else if (me === "spectator") setBanner(`Watching · ${colorToMove()} to move`);
-  else if (colorToMove() === me) setBanner(inCheck ? "Your move — you're in check!" : "Your move.");
-  else setBanner(`${opp ? seatName(opp) : "Your friend"} is thinking…`);
+  else if (me === "spectator") setBanner(`Watching · ${colorToMove()} to move${clock}`);
+  else if (colorToMove() === me) setBanner(`${inCheck ? "Your move — you're in check!" : "Your move"}${clock}`);
+  else setBanner(`${opp ? seatName(opp) : "Your friend"} is thinking${clock}`);
+  bannerEl.classList.toggle("hurry", left !== null && left <= 20 && colorToMove() === me);
 
   onlineCoachEl.textContent = waiting
     ? "Share the link with a friend. The game starts the moment they open it."

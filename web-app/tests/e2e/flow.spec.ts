@@ -25,7 +25,15 @@ test("home → tutorial → game → promotion", async ({ page }) => {
   await page.getByRole("button", { name: "Learn the pieces" }).click();
   await expect(page.locator("#tut-title")).toHaveText("The Pawn");
   await clickSquare(page, "e3"); // the pawn starts selected with its dots showing
-  await expect(page.locator("#tut-hint")).toContainText("legal");
+  await expect(page.locator("#tut-hint")).toContainText("that's how the pawn moves");
+
+  // Test yourself: no dots. An illegal idea is explained; the right capture passes.
+  await expect(page.locator("#tut-progress")).toContainText("Test yourself");
+  await expect(page.locator("#board square.move-dest")).toHaveCount(0);
+  await move(page, "e4", "e5");
+  await expect(page.locator("#tut-hint")).toContainText("capture one square diagonally");
+  await move(page, "e4", "d5");
+  await expect(page.locator("#tut-progress")).toContainText("Test passed");
   await page.locator("#tut-exit").click();
 
   // A real game against the engine: our move is played, the bot answers.

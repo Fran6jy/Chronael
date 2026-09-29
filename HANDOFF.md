@@ -50,6 +50,9 @@ browser (Vite + TS)
     reconnect gets the same colour back. A third device watches as a spectator.
   - **Game actions.** Resign; offer, accept and decline a draw (a declined player can't
     re-offer for 6 plies); rematch, which swaps colours.
+  - **Move timer.** Whoever is to move has 60 s, enforced by a Durable Object alarm
+    that fires even if nobody is connected. Running out loses the game (`status:
+    "timeout"`). The client shows a countdown that turns red in the last 20 s.
   - **Abandonment.** When a player has been away 60 s, the opponent may claim the win.
   - **Waiting.** After 20 s of waiting, the inviter is offered the bot while the link
     keeps working.
