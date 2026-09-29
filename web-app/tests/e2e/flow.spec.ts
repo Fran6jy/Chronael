@@ -149,3 +149,23 @@ test("ways to play a person are visible on the first screen", async ({ page }) =
   await expect(page.locator("#hero-quick")).toBeInViewport();
   await expect(page.locator("#hero-friend")).toBeInViewport();
 });
+
+test("home demo pieces sit inside the demo board", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#hero-board piece").first()).toBeVisible();
+  const inside = await page.evaluate(() => {
+    const b = document.querySelector("#hero-board")!.getBoundingClientRect();
+    return [...document.querySelectorAll("#hero-board piece")]
+      .map((p) => p.getBoundingClientRect())
+      .every((p) => p.left >= b.left - 1 && p.right <= b.right + 1 && p.bottom <= b.bottom + 1);
+  });
+  expect(inside).toBe(true);
+});
+
+test("game fits the window: your player row is visible without scrolling", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#hero-play").click();
+  await expect(page.locator("#status")).toHaveText("Your move.");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page.locator("#row-bottom")).toBeInViewport({ ratio: 1 });
+});

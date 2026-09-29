@@ -200,7 +200,8 @@ button { font-family: inherit; }
   display: grid; gap: 24px; grid-template-columns: minmax(0, auto) minmax(300px, 380px);
   justify-content: center; align-items: start;
 }
-.board-col { display: flex; flex-direction: column; gap: 10px; width: min(92vw, 600px); }
+/* Board, banner and both player rows fit the window height on desktop too. */
+.board-col { display: flex; flex-direction: column; gap: 10px; width: min(92vw, 600px, max(360px, calc(100vh - 290px))); }
 
 .turn-banner {
   display: flex; align-items: center; gap: 10px;
@@ -394,16 +395,27 @@ button { font-family: inherit; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- Hero demo ---------- */
-.hero-demo { grid-area: demo; margin: 0; position: relative; padding-top: 18px; align-self: start; max-width: 520px; justify-self: end; width: 100%; }
+/* The coach "speaks" above the board: a bubble with a tail pointing at it, so no pieces
+   are ever covered. No tilt: Chessground measures its box, and a rotated box made it draw
+   the pieces too big and clip the h-file. */
+.hero-demo {
+  grid-area: demo; margin: 0; padding-top: 18px; align-self: start; max-width: 520px; justify-self: end; width: 100%;
+  display: flex; flex-direction: column; align-items: center;
+}
 .demo-frame {
   position: relative; border-radius: 20px; padding: 10px; background: var(--paper);
-  border: 1px solid var(--line); box-shadow: var(--shadow-lg); transform: rotate(-1.2deg);
+  border: 1px solid var(--line); box-shadow: var(--shadow-lg);
+  width: min(100%, calc(100vh - 360px)); min-width: 300px;
 }
 .demo-board { width: 100%; aspect-ratio: 1; border-radius: 12px; overflow: hidden; pointer-events: none; }
 .demo-board.cg-wrap { height: auto; }
 .demo-bubble {
-  position: relative; margin: -28px 18px 0 38px; z-index: 3; background: #fff; border: 1px solid var(--line);
-  border-radius: 18px 18px 18px 4px; padding: 14px 16px 14px; box-shadow: var(--shadow-md);
+  order: -1; position: relative; align-self: stretch; margin: 0 0 16px; background: #fff; border: 1px solid var(--line);
+  border-radius: 18px; padding: 12px 16px; box-shadow: var(--shadow-md); min-height: 104px;
+}
+.demo-bubble::after {
+  content: ""; position: absolute; left: 50%; bottom: -9px; width: 16px; height: 16px; background: #fff;
+  border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: translateX(-50%) rotate(45deg);
 }
 .demo-bubble p, .demo-rating { transition: opacity 0.2s ease; }
 .demo-bubble.swap p, .demo-bubble.swap .demo-rating { opacity: 0; }
@@ -630,7 +642,6 @@ button { font-family: inherit; }
 }
 @media (max-width: 900px) {
   .hero-demo { max-width: 460px; width: 100%; justify-self: center; padding-top: 0; }
-  .demo-frame { transform: none; }
 }
 @media (max-width: 720px) {
   .nav-chip span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -717,26 +728,17 @@ html, body { max-width: 100%; overflow-x: clip; }
   .continue button { flex: 0 0 auto; }
   /* The coach "speaks" above the board: a bubble with a tail pointing at it, so the
      explanation is always in view and no pieces are covered. Fixed height = no jumping. */
-  .hero-demo { max-width: 340px; display: flex; flex-direction: column; }
-  .demo-bubble {
-    order: -1; position: relative; margin: 0 0 12px; padding: 9px 13px; min-height: 92px;
-    border-radius: 16px; box-shadow: var(--shadow-md);
-  }
-  .demo-bubble::after {
-    content: ""; position: absolute; left: 50%; bottom: -8px; width: 16px; height: 16px; background: #fff;
-    border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: translateX(-50%) rotate(45deg);
-  }
+  .hero-demo { max-width: 340px; }
+  .demo-bubble { margin: 0 0 12px; padding: 9px 13px; min-height: 92px; border-radius: 16px; }
   .demo-bubble p { font-size: 0.88rem; line-height: 1.4; margin-top: 4px; }
   /* Board size follows screen height too, so the whole demo fits on the first screen. */
-  .demo-frame { width: min(280px, calc(100svh - 470px)); min-width: 200px; align-self: center; padding: 8px; }
+  .demo-frame { width: min(280px, calc(100svh - 470px)); min-width: 200px; padding: 8px; }
   .demo-dots { margin-top: 10px; }
   .entry-title::after { content: " · more options"; font-family: var(--sans); font-size: 0.85rem; color: var(--muted); font-weight: 500; }
   .topbar { padding: 12px 14px 4px; }
   .brand { font-size: 1.35rem; }
   .hero-points li { font-size: 0.8rem; padding: 5px 10px; }
   .hero-demo { max-width: 340px; }
-  .demo-bubble { margin: 10px 0 0; border-radius: 18px; }
-  .demo-bubble p { font-size: 0.95rem; }
   .home-card { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; padding: 16px; }
   .home-card > * { grid-column: 2; }
   .home-card .card-icon { grid-column: 1; grid-row: 1 / span 4; margin: 0; }
@@ -751,7 +753,6 @@ html, body { max-width: 100%; overflow-x: clip; }
 
 @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1 !important; transform: none !important; }
-  .demo-frame { transform: none; }
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
   .confetti { display: none; }
 }
