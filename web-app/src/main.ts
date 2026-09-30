@@ -2514,6 +2514,7 @@ function init(): void {
     animation: { enabled: !reducedMotion(), duration: 200 },
     highlight: { lastMove: true, check: true },
     draggable: { enabled: true, showGhost: true },
+    blockTouchScroll: true, // touches on the board are moves, never page scrolls (iOS)
     drawable: { enabled: true },
     coordinates: true, // built once; shown/hidden via the .coords-on CSS class
   };

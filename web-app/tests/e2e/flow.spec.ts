@@ -271,3 +271,30 @@ test("picking a piece up lifts it; putting it down or moving drops it", async ({
   await expect(page.locator("#moves li").first()).toContainText("e4");
   await expect(page.locator("#board piece.lifted")).toHaveCount(0);
 });
+
+test("touch-dragging a piece moves it and never scrolls the page", async ({ page }, info) => {
+  test.skip(info.project.name !== "mobile", "real touch events need the mobile (touch) project");
+  await page.goto("/");
+  await page.locator("#hero-play").click();
+  await expect(page.locator("#status")).toHaveText("Your move.");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const touchAction = await page.evaluate(() => getComputedStyle(document.querySelector("#board cg-board")!).touchAction);
+  expect(touchAction).toBe("none");
+
+  const box = (await page.locator("#board cg-board").boundingBox())!;
+  const at = (sq: string) => ({
+    x: box.x + (sq.charCodeAt(0) - 97 + 0.5) * (box.width / 8),
+    y: box.y + (8 - Number(sq[1]) + 0.5) * (box.height / 8),
+  });
+  const from = at("e2");
+  const to = at("e4");
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (type: string, p?: { x: number; y: number }) =>
+    cdp.send("Input.dispatchTouchEvent", { type, touchPoints: p ? [{ x: p.x, y: p.y }] : [] });
+  await touch("touchStart", from);
+  for (let i = 1; i <= 8; i++) await touch("touchMove", { x: from.x, y: from.y + ((to.y - from.y) * i) / 8 });
+  await touch("touchEnd");
+
+  await expect(page.locator("#moves li").first()).toContainText("e4");
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});

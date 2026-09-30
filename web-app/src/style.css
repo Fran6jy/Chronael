@@ -234,6 +234,15 @@ button { font-family: inherit; }
 /* The paper frame lives on the wrapper, so Chessground measures only the squares
    (a border on the board itself makes it size the squares too large and clip the h-file). */
 .board-wrap { background: var(--paper); padding: 6px; border-radius: 16px; box-shadow: var(--shadow-lg); }
+/* The board owns every touch that starts on it. Without this, iOS Safari sometimes
+   decides a drag is a page scroll before Chessground can claim it; a long press would
+   also bring up text selection, the magnifier or the callout menu. */
+#board, #board * {
+  touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* No rubber-band bounce or pull-to-refresh while playing. */
+html:has(#game:not([hidden])), body:has(#game:not([hidden])) { overscroll-behavior-y: none; }
 #board.cg-wrap { width: 100%; height: auto; aspect-ratio: 1; border-radius: 11px; overflow: hidden; }
 
 .side { display: flex; flex-direction: column; gap: 14px; }
