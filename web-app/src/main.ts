@@ -229,8 +229,23 @@ function updateCaptured(): void {
 }
 
 function soundForMove(move: Move | null): void {
-  if (move && (move.captured || move.flags.includes("e"))) playCapture();
-  else playMove();
+  if (move && (move.captured || move.flags.includes("e"))) {
+    playCapture();
+    haptic(18);
+  } else playMove();
+}
+
+/** A tiny buzz on phones that support it (Android; iOS doesn't let websites vibrate). Off when muted. */
+function haptic(ms: number): void {
+  if (!isMuted()) navigator.vibrate?.(ms);
+}
+
+/** Lift the selected piece (see .lifted in style.css); drop any other lifted piece. */
+function liftSelected(): void {
+  const sel = ground?.state.selected;
+  for (const p of document.querySelectorAll<HTMLElement & { cgKey?: string }>("#board piece")) {
+    p.classList.toggle("lifted", !!sel && p.cgKey === sel && !p.classList.contains("ghost"));
+  }
 }
 
 let ground: Api;
@@ -339,6 +354,7 @@ function render(): void {
     },
   });
 
+  liftSelected(); // a move or a new position clears the selection
   if (mode === "online") updateOnlineUI();
   else if (mode === "puzzle") updatePuzzleStatus();
   else if (mode === "vision") setBanner("Board vision");
@@ -2298,11 +2314,13 @@ function noteLegal(type: string): void {
 
 /** Picking up a piece: dots only for pieces not yet learned (never against people). */
 function onSelect(key: Key): void {
-  if (tutorial.active) return;
   if (mode === "vision") {
     visionTap(key);
     return;
   }
+  liftSelected();
+  if (ground.state.selected === key && ground.state.pieces.get(key)?.color === ground.state.movable.color) haptic(8);
+  if (tutorial.active) return;
   if (mode === "online" || realGame) return; // render() already set free movement, no dots
   const p = chess.get(key as Square);
   if (!p || (p.color === "w") !== (playerColor === "white")) return;

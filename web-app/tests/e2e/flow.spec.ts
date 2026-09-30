@@ -248,3 +248,26 @@ test("quick match with nobody around: choose the computer explicitly, real-game 
   await clickSquare(page, "e2");
   await expect(page.locator("#board square.move-dest")).toHaveCount(0);
 });
+
+test("picking a piece up lifts it; putting it down or moving drops it", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#hero-play").click();
+  await expect(page.locator("#status")).toHaveText("Your move.");
+  await clickSquare(page, "e2");
+  await expect(page.locator("#board piece.lifted")).toHaveCount(1);
+  const lifted = await page.evaluate(() => (document.querySelector("#board piece.lifted") as HTMLElement & { cgKey: string }).cgKey);
+  expect(lifted).toBe("e2");
+  await expect(page.locator("#board square.selected")).toHaveCount(1);
+  // The lifted piece must stay on its square (a CSS scale would make it drift).
+  const drift = await page.evaluate(() => {
+    const p = document.querySelector("#board piece.lifted")!.getBoundingClientRect();
+    const q = document.querySelector("#board square.selected")!.getBoundingClientRect();
+    return Math.abs(p.left - q.left) + Math.abs(p.top - q.top);
+  });
+  expect(drift).toBeLessThan(2);
+  await clickSquare(page, "e2"); // put it back down
+  await expect(page.locator("#board piece.lifted")).toHaveCount(0);
+  await move(page, "e2", "e4");
+  await expect(page.locator("#moves li").first()).toContainText("e4");
+  await expect(page.locator("#board piece.lifted")).toHaveCount(0);
+});
